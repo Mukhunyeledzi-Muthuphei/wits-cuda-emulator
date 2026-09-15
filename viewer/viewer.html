@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cuemu — GPU run</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --panel-2: #f0f2f5;
+  --ink: #16181d;
+  --ink-2: #5a6272;
+  --line: #dde1e8;
+  --accent: #3b5bdb;
+  --accent-soft: #dbe4ff;
+  --read: #74c0fc;
+  --write: #3b5bdb;
+  --idle: #d7dce5;
+  --warn: #e8a317;
+  --warn-soft: #fff3d6;
+  --err: #d6336c;
+  --err-soft: #ffe0ec;
+  --ok: #2b8a3e;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161b;
+    --panel: #1b1e25;
+    --panel-2: #22262f;
+    --ink: #e8eaf0;
+    --ink-2: #9aa3b5;
+    --line: #2c313c;
+    --accent: #748ffc;
+    --accent-soft: #263050;
+    --read: #4a7ba8;
+    --write: #748ffc;
+    --idle: #343a46;
+    --warn: #f0b429;
+    --warn-soft: #3a2f11;
+    --err: #ff6b9d;
+    --err-soft: #3d1a2a;
+    --ok: #51cf66;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+h1, h2, h3 { font-weight: 600; margin: 0; }
+code, .mono { font-family: var(--mono); }
+
+header {
+  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+}
+.brand { font-weight: 700; letter-spacing: .04em; color: var(--accent); }
+.brand span { color: var(--ink-2); font-weight: 400; margin-left: 8px; letter-spacing: 0; }
+.prog { font-family: var(--mono); font-size: 15px; }
+.badge {
+  font-size: 12px; padding: 2px 9px; border-radius: 999px;
+  background: var(--panel-2); color: var(--ink-2); border: 1px solid var(--line);
+}
+.badge.err { background: var(--err-soft); color: var(--err); border-color: transparent; }
+.badge.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.badge.ok { background: transparent; color: var(--ok); border-color: var(--ok); }
+
+.stats { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); }
+.stat { flex: 1 1 150px; background: var(--panel); padding: 10px 16px; }
+.stat .k { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+.stat .v { font-size: 18px; font-family: var(--mono); }
+.stat .s { font-size: 12px; color: var(--ink-2); }
+
+main { display: grid; grid-template-columns: minmax(260px, 320px) 1fr; gap: 0; align-items: start; }
+@media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+aside { border-right: 1px solid var(--line); background: var(--panel); min-height: calc(100vh - 140px); }
+section.pane { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.pane h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); margin-bottom: 10px; }
+
+/* timeline */
+.lanes { font-size: 11px; }
+.lane { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 8px; margin-bottom: 4px; }
+.lane .name { color: var(--ink-2); text-align: right; }
+.track { position: relative; height: 16px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.bar { position: absolute; top: 2px; bottom: 2px; min-width: 2px; border-radius: 2px; background: var(--accent); cursor: pointer; }
+.bar.copy { background: var(--read); }
+.bar.kernel { background: var(--ok); }
+.bar.bad { background: var(--err); }
+.bar.wait { background: repeating-linear-gradient(45deg, var(--idle), var(--idle) 3px, transparent 3px, transparent 6px); }
+.bar.sel { outline: 2px solid var(--ink); outline-offset: 1px; }
+.axis { display: flex; justify-content: space-between; color: var(--ink-2); margin-top: 2px; }
+label.toggle { display: flex; gap: 6px; align-items: center; margin-top: 8px; color: var(--ink-2); font-size: 12px; }
+
+/* steps */
+.step {
+  display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: baseline;
+  padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.step:hover { background: var(--panel-2); }
+.step.sel { background: var(--accent-soft); }
+.step .icon { font-size: 11px; color: var(--ink-2); text-align: center; }
+.step .what { font-family: var(--mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step .t { font-size: 11px; color: var(--ink-2); font-family: var(--mono); }
+.step.bad .what { color: var(--err); }
+
+/* problems */
+.prob { padding: 8px; border-radius: 6px; cursor: pointer; margin-bottom: 6px; border-left: 3px solid var(--err); background: var(--err-soft); }
+.prob.warning { border-color: var(--warn); background: var(--warn-soft); }
+.prob .code { font-size: 11px; font-family: var(--mono); opacity: .8; }
+.prob .title { font-size: 12.5px; }
+
+/* detail */
+#detail { padding: 18px 22px 60px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.card > h3 { font-size: 13px; margin-bottom: 4px; }
+.sub { color: var(--ink-2); font-size: 12.5px; }
+.kv { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 10px; font-size: 12.5px; }
+.kv div span { color: var(--ink-2); }
+.note { background: var(--panel-2); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: var(--ink-2); margin-top: 12px; }
+
+/* thread grid */
+.blocks { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.block { border: 1px solid var(--line); border-radius: 6px; padding: 5px; background: var(--panel-2); }
+.block .bl { font-size: 10px; color: var(--ink-2); font-family: var(--mono); margin-bottom: 3px; }
+.threads { display: grid; gap: 1px; }
+.th { width: 9px; height: 9px; border-radius: 1.5px; background: var(--idle); }
+.th.r { background: var(--read); }
+.th.w { background: var(--write); }
+.th.race { background: var(--warn); }
+.th.err { background: var(--err); }
+.th.pending { opacity: .18; }
+.th.unrec { background: repeating-linear-gradient(45deg, var(--idle), var(--idle) 2px, transparent 2px, transparent 4px); }
+.th.hl { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 2; position: relative; }
+.big .th { width: 13px; height: 13px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink-2); margin-top: 12px; }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+/* memory strips */
+.strip { margin-top: 14px; }
+.strip .hdr { display: flex; justify-content: space-between; font-size: 12px; font-family: var(--mono); margin-bottom: 4px; }
+.cells { display: flex; flex-wrap: wrap; gap: 1px; }
+.cell {
+  min-width: 10px; height: 14px; background: var(--idle); border-radius: 1.5px;
+  font-size: 9px; font-family: var(--mono); color: #fff; text-align: center; line-height: 14px; overflow: hidden;
+}
+.cell.wide { min-width: 42px; padding: 0 3px; }
+.cell.untouched { background: var(--idle); }
+.cell.read { background: var(--read); }
+.cell.written { background: var(--write); }
+.cell.race { background: var(--warn); }
+.cell.oob { background: var(--err); }
+.cell.uninit { background: transparent; border: 1px dashed var(--err); color: var(--err); }
+.cell.pending { opacity: .18; }
+.cell.hl { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+/* source */
+pre.src { margin: 0; overflow-x: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; }
+pre.src .ln { color: var(--ink-2); user-select: none; }
+pre.src .hi { background: var(--accent-soft); display: block; }
+pre.src .bad { background: var(--err-soft); display: block; }
+
+button {
+  font: inherit; font-size: 12.5px; padding: 4px 12px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.arrow { font-size: 26px; color: var(--ink-2); }
+.copyviz { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.side { flex: 1 1 200px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.side .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+#drop { padding: 60px; text-align: center; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const TRACE = "__CUEMU_TRACE_JSON__";
+
+/* ---------- helpers ---------- */
+const el = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+};
+const fmtInt = n => n.toLocaleString('en-US');
+const fmtMs = ms => ms >= 100 ? ms.toFixed(1) + ' ms' : ms >= 1 ? ms.toFixed(2) + ' ms'
+  : ms >= 0.001 ? (ms * 1000).toFixed(1) + ' µs' : (ms * 1e6).toFixed(0) + ' ns';
+const fmtBytes = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB'
+  : b < 1073741824 ? (b / 1048576).toFixed(1) + ' MB' : (b / 1073741824).toFixed(2) + ' GB';
+
+function fmtVal(v, type) {
+  if (v === undefined || v === null) return '';
+  if (type === 1 || type === 2) {
+    if (!isFinite(v)) return String(v);
+    if (v === 0) return '0';
+    const a = Math.abs(v);
+    if (a >= 1e6 || a < 1e-3) return v.toExponential(1);
+    return String(Math.round(v * 1000) / 1000);
+  }
+  return String(v);
+}
+
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/* Decode a device memory snapshot into values plus an "was it ever written" flag. */
+function decodeSnap(snap, alloc) {
+  if (!snap) return null;
+  const bytes = b64ToBytes(snap.data);
+  const initBits = b64ToBytes(snap.init || '');
+  const dv = new DataView(bytes.buffer);
+  const es = alloc.elemSize || 1, type = alloc.type;
+  const n = Math.floor(bytes.length / es);
+  const vals = new Array(n), init = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * es;
+    let v;
+    try {
+      switch (type) {
+        case 1: v = dv.getFloat32(o, true); break;
+        case 2: v = dv.getFloat64(o, true); break;
+        case 3: v = dv.getInt8(o); break;
+        case 4: v = dv.getUint8(o); break;
+        case 5: v = dv.getInt16(o, true); break;
+        case 6: v = dv.getUint16(o, true); break;
+        case 7: v = dv.getInt32(o, true); break;
+        case 8: v = dv.getUint32(o, true); break;
+        case 9: case 11: v = Number(dv.getBigInt64(o, true)); break;
+        case 10: case 12: v = Number(dv.getBigUint64(o, true)); break;
+        case 13: v = dv.getUint8(o) ? 'true' : 'false'; break;
+        default: v = '0x' + bytes[o].toString(16).padStart(2, '0');
+      }
+    } catch (e) { v = null; }
+    vals[i] = v;
+    init[i] = (initBits[Math.floor(o / 8)] >> (o % 8)) & 1;
+  }
+  return { vals, init, count: n };
+}
+
+/* ---------- model ---------- */
+let T, allocs, state;
+
+function threadPos(ev, t) {
+  const [gx, gy] = ev.grid, [bx, by, bz] = ev.block;
+  const per = bx * by * bz;
+  const b = Math.floor(t / per), th = t % per;
+  return {
+    block: [b % gx, Math.floor(b / gx) % gy, Math.floor(b / (gx * gy))],
+    thread: [th % bx, Math.floor(th / bx) % by, Math.floor(th / (bx * by))],
+    blockIndex: b, threadInBlock: th,
+  };
+}
+
+/* Per-launch analysis: what each thread touched, and what happened to each memory cell. */
+function analyze(ev) {
+  if (ev._a) return ev._a;
+  const perThread = new Map(), perCell = new Map();
+  const acc = ev.acc || [];
+  for (let i = 0; i < acc.length; i += 4) {
+    const t = acc[i], a = acc[i + 1], idx = acc[i + 2], f = acc[i + 3];
+    let list = perThread.get(t);
+    if (!list) perThread.set(t, list = []);
+    list.push({ a, idx, f });
+    const key = a + ':' + idx;
+    let c = perCell.get(key);
+    if (!c) perCell.set(key, c = { a, idx, threads: [], read: 0, write: 0, flags: 0 });
+    c.flags |= f;
+    if (f & 1) c.read++;
+    if (f & 2) c.write++;
+    if (!c.threads.includes(t)) c.threads.push(t);
+  }
+  const snaps = new Map();
+  for (const s of ev.snaps || []) {
+    const al = allocs.get(s.alloc);
+    if (al) snaps.set(s.alloc, decodeSnap(s, al));
+  }
+  const touched = [...new Set((ev.acc || []).filter((_, i) => i % 4 === 1))].filter(a => a > 0);
+  return (ev._a = { perThread, perCell, snaps, touched });
+}
+
+function threadClass(list) {
+  if (!list) return '';
+  let cls = '';
+  for (const a of list) {
+    if (a.f & (8 | 64)) return 'err';
+    if (a.f & 16) cls = 'race';
+    else if (a.f & 2 && cls !== 'race') cls = 'w';
+    else if (!cls) cls = 'r';
+  }
+  return cls;
+}
+
+/* ---------- rendering ---------- */
+function render() {
+  const app = document.getElementById('app');
+  app.textContent = '';
+  app.append(renderHeader(), renderStats(), renderMain());
+}
+
+function renderHeader() {
+  const h = el('header');
+  const brand = el('div', 'brand', 'cuemu');
+  brand.append(el('span', null, 'CUDA on a machine with no GPU'));
+  h.append(brand, el('div', 'prog', T.program));
+  const bad = T.totals.errors, warn = T.totals.warnings;
+  if (T.status === 'crashed') h.append(el('div', 'badge err', 'crashed'));
+  if (bad) h.append(el('div', 'badge err', bad + (bad === 1 ? ' error' : ' errors')));
+  if (warn) h.append(el('div', 'badge warn', warn + (warn === 1 ? ' warning' : ' warnings')));
+  if (!bad && !warn && T.status !== 'crashed') h.append(el('div', 'badge ok', 'no problems found'));
+  h.append(el('div', 'badge', 'GPU threads ran ' + (T.order === 'shuffle' ? 'in a shuffled order' : 'in order')));
+  return h;
+}
+
+function stat(k, v, s) {
+  const d = el('div', 'stat');
+  d.append(el('div', 'k', k), el('div', 'v', v));
+  if (s) d.append(el('div', 's', s));
+  return d;
+}
+
+function renderStats() {
+  const t = T.totals, m = T.model;
+  const box = el('div', 'stats');
+  const cpu = T.events.filter(e => e.type === 'launch').reduce((s, e) => s + (e.cpuMs || 0), 0);
+  box.append(
+    stat('Simulated total', fmtMs(t.endMs), 'includes ' + fmtMs(m.contextInitMs) + ' of CUDA start-up'),
+    stat('Kernels', fmtMs(t.kernelMs), fmtInt(t.launches) + ' launch' + (t.launches === 1 ? '' : 'es') + ', ' + fmtInt(t.threads) + ' GPU threads'),
+    stat('Copies', fmtMs(t.h2dMs + t.d2hMs), 'host→device ' + fmtMs(t.h2dMs) + ' · device→host ' + fmtMs(t.d2hMs)),
+    stat('Same work on 1 CPU core', fmtMs(cpu), 'model estimate, for comparison'),
+    stat('Device memory', fmtBytes(t.peakBytes), 'peak of ' + fmtBytes(m.deviceBytes) + ' simulated'),
+  );
+  return box;
+}
+
+function renderMain() {
+  const main = el('main');
+  const side = el('aside');
+  side.append(renderTimeline(), renderSteps(), renderProblems());
+  const detail = el('section');
+  detail.id = 'detail';
+  detail.append(renderDetail());
+  main.append(side, detail);
+  return main;
+}
+
+function renderTimeline() {
+  const p = el('section', 'pane');
+  p.append(el('h2', null, 'Timeline (simulated)'));
+  const skipInit = !state.showInit;
+  const t0 = skipInit ? T.model.contextInitMs : 0;
+  const t1 = Math.max(T.totals.endMs, t0 + 0.001);
+  const lanes = { host: [], copy: [], gpu: [] };
+  T.events.forEach((e, i) => {
+    const s = e.t0 ?? 0, f = e.t1 ?? s;
+    if (e.type === 'memcpy' || e.type === 'memset') lanes.copy.push({ e, i, s, f, cls: e.ok === false ? 'bad' : 'copy' });
+    else if (e.type === 'launch') lanes.gpu.push({ e, i, s, f, cls: e.ok === false ? 'bad' : 'kernel' });
+    else if (e.type === 'sync') lanes.host.push({ e, i, s, f, cls: 'wait' });
+    else lanes.host.push({ e, i, s, f, cls: '' });
+  });
+  const box = el('div', 'lanes');
+  for (const [name, items] of [['Host', lanes.host], ['Copy', lanes.copy], ['GPU', lanes.gpu]]) {
+    const lane = el('div', 'lane');
+    lane.append(el('div', 'name', name));
+    const track = el('div', 'track');
+    for (const it of items) {
+      if (it.f < t0) continue;
+      const bar = el('div', 'bar ' + it.cls + (state.sel === it.i ? ' sel' : ''));
+      const left = (Math.max(it.s, t0) - t0) / (t1 - t0) * 100;
+      const w = Math.max((it.f - Math.max(it.s, t0)) / (t1 - t0) * 100, 0.6);
+      bar.style.left = left + '%';
+      bar.style.width = w + '%';
+      bar.title = describe(it.e) + ' — ' + fmtMs(it.f - it.s);
+      bar.onclick = () => select(it.i);
+      track.append(bar);
+    }
+    lane.append(track);
+    box.append(lane);
+  }
+  const axis = el('div', 'axis');
+  axis.append(el('span', null, fmtMs(t0)), el('span', null, fmtMs(t1)));
+  box.append(axis);
+  p.append(box);
+  const lab = el('label', 'toggle');
+  const cb = el('input');
+  cb.type = 'checkbox';
+  cb.checked = state.showInit;
+  cb.onchange = () => { state.showInit = cb.checked; render(); };
+  lab.append(cb, el('span', null, 'include CUDA start-up (' + fmtMs(T.model.contextInitMs) + ')'));
+  p.append(lab);
+  return p;
+}
+
+function describe(e) {
+  switch (e.type) {
+    case 'context': return 'CUDA start-up';
+    case 'malloc': return 'cudaMalloc ' + e.name + ' (' + fmtBytes(e.bytes) + ')';
+    case 'free': return 'cudaFree ' + e.name;
+    case 'memcpy': return 'cudaMemcpy ' + (e.kind === 'HostToDevice' ? e.src + ' → ' + e.dst : e.src + ' → ' + e.dst)
+      + ' (' + fmtBytes(e.bytes) + ')';
+    case 'memset': return 'cudaMemset ' + e.name;
+    case 'sync': return 'cudaDeviceSynchronize';
+    case 'launch': return e.kernel + '<<<' + e.grid.filter((v, i) => i === 0 || v > 1).join(', ') + ', '
+      + e.block.filter((v, i) => i === 0 || v > 1).join(', ') + '>>>';
+    case 'crash': return 'crash';
+  }
+  return e.type;
+}
+
+const ICONS = { context: '◴', malloc: '▢', free: '▨', memcpy: '⇄', memset: '▤', sync: '⏸', launch: '▶', crash: '✕' };
+
+function renderSteps() {
+  const p = el('section', 'pane');
+  p.append(el('h2', null, 'What the program did'));
+  T.events.forEach((e, i) => {
+    const row = el('div', 'step' + (state.sel === i ? ' sel' : '') + (e.ok === false || e.type === 'crash' ? ' bad' : ''));
+    row.append(el('div', 'icon', ICONS[e.type] || '·'), el('div', 'what', describe(e)),
+      el('div', 't', e.line ? 'L' + e.line : ''));
+    row.onclick = () => select(i);
+    p.append(row);
+  });
+  return p;
+}
+
+function renderProblems() {
+  const p = el('section', 'pane');
+  p.append(el('h2', null, 'Problems (' + T.diagnostics.length + ')'));
+  if (!T.diagnostics.length) p.append(el('div', 'sub', 'None. The run looks clean.'));
+  T.diagnostics.forEach(d => {
+    const box = el('div', 'prob ' + d.severity);
+    box.append(el('div', 'code', d.code + (d.line ? ' · line ' + d.line : '')), el('div', 'title', d.title));
+    box.onclick = () => select(d.event, d);
+    p.append(box);
+  });
+  return p;
+}
+
+function select(i, diag) {
+  state.sel = Math.min(Math.max(i, 0), T.events.length - 1);
+  state.thread = null;
+  state.focusDiag = diag || null;
+  state.play = null;
+  render();
+  document.getElementById('detail').scrollIntoView({ block: 'nearest' });
+}
+
+/* ---------- detail panels ---------- */
+function renderDetail() {
+  const box = el('div');
+  const e = T.events[state.sel];
+  if (!e) return box;
+  switch (e.type) {
+    case 'launch': box.append(...launchPanels(e)); break;
+    case 'memcpy': box.append(copyPanel(e)); break;
+    case 'malloc': case 'free': case 'memset': box.append(memPanel(e)); break;
+    case 'context': box.append(contextPanel()); break;
+    case 'sync': box.append(syncPanel(e)); break;
+    case 'crash': box.append(crashPanel(e)); break;
+  }
+  const diags = T.diagnostics.filter(d => d.event === state.sel);
+  for (const d of diags) box.append(diagCard(d));
+  if (e.file) box.append(sourceCard(e, diags));
+  return box;
+}
+
+function diagCard(d) {
+  const c = el('div', 'card');
+  c.style.borderLeft = '3px solid var(--' + (d.severity === 'error' ? 'err' : 'warn') + ')';
+  c.append(el('h3', null, d.title), el('div', 'sub', d.code + (d.line ? ' · line ' + d.line : '')));
+  const kv = el('div', 'kv');
+  kv.style.flexDirection = 'column';
+  for (const [k, v] of d.rows || []) {
+    const row = el('div');
+    row.append(el('span', null, k + '  '), document.createTextNode(v));
+    kv.append(row);
+  }
+  c.append(kv);
+  if (d.hint) c.append(el('div', 'note', '💡 ' + d.hint));
+  return c;
+}
+
+function contextPanel() {
+  const c = el('div', 'card');
+  c.append(el('h3', null, 'CUDA start-up'), el('div', 'sub',
+    'The first CUDA call in a program creates the GPU context: ' + fmtMs(T.model.contextInitMs)
+    + ' in this model, and a real GPU is no faster.'));
+  c.append(el('div', 'note', 'This is why timing measurements should skip the first call, and why short-lived '
+    + 'GPU programs can spend more time starting up than computing.'));
+  return c;
+}
+
+function syncPanel(e) {
+  const c = el('div', 'card');
+  const waited = (e.t1 ?? 0) - (e.t0 ?? 0);
+  c.append(el('h3', null, 'cudaDeviceSynchronize()'), el('div', 'sub',
+    waited > 0 ? 'The CPU waited ' + fmtMs(waited) + ' here for the GPU to finish.'
+      : 'The GPU was already idle, so this returned immediately.'));
+  c.append(el('div', 'note', 'Kernel launches are asynchronous: the CPU keeps running while the GPU works. '
+    + 'cudaDeviceSynchronize (and any cudaMemcpy) waits for the GPU to catch up.'));
+  return c;
+}
+
+function crashPanel(e) {
+  const c = el('div', 'card');
+  c.append(el('h3', null, e.title || 'crash'), el('div', 'sub', 'The program stopped here.'));
+  return c;
+}
+
+function memPanel(e) {
+  const c = el('div', 'card');
+  const a = allocs.get(e.alloc);
+  const verb = { malloc: 'cudaMalloc', free: 'cudaFree', memset: 'cudaMemset' }[e.type];
+  c.append(el('h3', null, verb + '(' + (e.name || '') + ')'),
+    el('div', 'sub', e.ok === false ? 'This call failed.' : e.type === 'malloc'
+      ? 'Reserved ' + fmtBytes(e.bytes) + ' of device memory. The contents are undefined until something writes to it.'
+      : e.type === 'free' ? 'Released the device memory.'
+      : 'Filled ' + fmtBytes(e.bytes) + ' with the byte ' + e.value + '.'));
+  if (a) {
+    const kv = el('div', 'kv');
+    kv.append(kvItem('elements', a.elemSize ? fmtInt(a.bytes / a.elemSize) + ' × ' + a.typeName : '—'),
+      kvItem('bytes', fmtBytes(a.bytes)), kvItem('allocated', 'line ' + a.line),
+      kvItem('freed', a.freeLine ? 'line ' + a.freeLine : 'never'));
+    c.append(kv);
+  }
+  if (e.snap && a) c.append(memoryStrip(a, decodeSnap(e.snap, a), null, null));
+  return c;
+}
+
+function kvItem(k, v) {
+  const d = el('div');
+  d.append(el('span', null, k + ' '), document.createTextNode(v));
+  return d;
+}
+
+function copyPanel(e) {
+  const c = el('div', 'card');
+  const h2d = e.kind === 'HostToDevice';
+  const dur = (e.t1 ?? 0) - (e.t0 ?? 0);
+  const waited = (e.t0 ?? 0) - (e.tHost ?? 0);
+  c.append(el('h3', null, 'cudaMemcpy — ' + e.kind),
+    el('div', 'sub', fmtBytes(e.bytes) + ' in ' + fmtMs(dur) + ' over the (simulated) PCIe link'
+      + (e.pinned ? ', from pinned host memory' : '')));
+  const viz = el('div', 'copyviz');
+  const left = el('div', 'side'), right = el('div', 'side');
+  left.append(el('div', 'lbl', h2d ? 'Host (CPU) memory' : 'Device (GPU) memory'),
+    el('div', 'mono', h2d ? e.src : e.src));
+  right.append(el('div', 'lbl', h2d ? 'Device (GPU) memory' : 'Host (CPU) memory'),
+    el('div', 'mono', e.dst));
+  viz.append(left, el('div', 'arrow', '→'), right);
+  c.append(viz);
+  if (waited > 0.0005) c.append(el('div', 'note', 'The CPU waited ' + fmtMs(waited)
+    + ' here for the GPU to finish its work: a copy cannot start while the kernel is still running.'));
+  const a = allocs.get(e.dstAlloc > 0 ? e.dstAlloc : e.srcAlloc);
+  if (e.snap && a) c.append(memoryStrip(a, decodeSnap(e.snap, a), null, null, 'device memory after the copy'));
+  const share = (dur / Math.max(T.totals.kernelMs, 1e-9));
+  if (T.totals.kernelMs > 0) c.append(el('div', 'note', 'This single copy costs ' + share.toFixed(1)
+    + '× the time of all kernel work in this program. Moving data is usually the expensive part, which is why '
+    + 'GPU code tries to copy once and compute many times.'));
+  return c;
+}
+
+/* ---------- launch panels ---------- */
+function launchPanels(e) {
+  const out = [];
+  const a = analyze(e);
+  const [gx, gy, gz] = e.grid, [bx, by, bz] = e.block;
+  const head = el('div', 'card');
+  head.append(el('h3', null, describe(e)), el('div', 'sub',
+    e.ok === false ? 'The launch failed: ' + e.reason
+      : fmtInt(e.threads) + ' GPU threads ran `' + e.kernel + '`, in ' + fmtInt(gx * gy * gz)
+        + ' block' + (gx * gy * gz === 1 ? '' : 's') + ' of ' + fmtInt(bx * by * bz) + ' threads.'));
+  const kv = el('div', 'kv');
+  kv.append(kvItem('numBlocks', e.grid.join(' × ')), kvItem('threadsPerBlock', e.block.join(' × ')),
+    kvItem('GPU time', fmtMs((e.t1 ?? 0) - (e.t0 ?? 0))),
+    kvItem('same work on 1 CPU core', fmtMs(e.cpuMs || 0)));
+  head.append(kv);
+  if (e.ok !== false) {
+    head.append(el('div', 'note', 'On a real GPU these ' + fmtInt(e.threads)
+      + ' threads run at the same time, in groups of 32 called warps, spread over the GPU\'s cores. cuemu ran them '
+      + (T.order === 'shuffle' ? 'one at a time in a shuffled order' : 'one at a time in order')
+      + ' on your CPU — so anything that depends on thread order shows up as a data race, and printf output comes '
+      + 'out jumbled, just like on real hardware.'));
+  }
+  out.push(head);
+  if (e.ok === false) return out;
+
+  /* thread grid */
+  const grid = el('div', 'card');
+  grid.append(el('h3', null, 'GPU threads'), el('div', 'sub',
+    'Each square is one GPU thread; each box is one block. Hover a thread to see what it did.'));
+  const blocks = el('div', 'blocks');
+  const nblocks = gx * gy * gz, per = bx * by * bz;
+  const zoomed = state.zoomBlock != null && nblocks * per > 8192;
+  const showThreads = nblocks * per <= 8192 || zoomed;
+  const list = zoomed ? [state.zoomBlock] : [...Array(Math.min(nblocks, 4096)).keys()];
+  const recLimit = e.recLimit || Infinity;
+  for (const b of list) {
+    const box = el('div', 'block');
+    const bxi = b % gx, byi = Math.floor(b / gx) % gy, bzi = Math.floor(b / (gx * gy));
+    box.append(el('div', 'bl', 'block ' + (gy * gz > 1 ? '(' + bxi + ', ' + byi + (gz > 1 ? ', ' + bzi : '') + ')' : bxi)));
+    if (showThreads) {
+      const th = el('div', 'threads' + (per <= 64 ? ' big' : ''));
+      const cols = by > 1 ? bx : Math.min(per, 32);
+      th.style.gridTemplateColumns = 'repeat(' + cols + ', auto)';
+      for (let t = 0; t < per; t++) {
+        const gid = b * per + t;
+        const cell = el('div', 'th ' + (gid >= recLimit ? 'unrec' : threadClass(a.perThread.get(gid))));
+        cell.dataset.t = gid;
+        th.append(cell);
+      }
+      th.onmouseover = ev => { if (ev.target.dataset.t) setThread(+ev.target.dataset.t); };
+      box.append(th);
+    } else {
+      /* Too many threads to draw: colour the block by the worst thing that happened in it. */
+      let cls = b * per >= recLimit ? 'unrec' : '';
+      for (let t = 0; t < per && cls !== 'err'; t++) {
+        const c = threadClass(a.perThread.get(b * per + t));
+        if (c === 'err') cls = 'err';
+        else if (c === 'race') cls = 'race';
+        else if (c === 'w' && cls !== 'race') cls = 'w';
+        else if (c === 'r' && !cls) cls = 'r';
+      }
+      const summary = el('div', 'th big ' + cls);
+      summary.style.width = '26px';
+      summary.style.height = '26px';
+      summary.title = cls === 'unrec' ? 'not recorded in detail' : 'block ' + b;
+      box.append(summary);
+      box.style.cursor = 'pointer';
+      box.onclick = () => { state.zoomBlock = b; render(); };
+    }
+    blocks.append(box);
+  }
+  grid.append(blocks);
+  if (!showThreads) grid.append(el('div', 'note', 'This launch has ' + fmtInt(nblocks * per)
+    + ' threads — too many to draw individually. Click a block to look inside it.'));
+  if (e.threads > recLimit) grid.append(el('div', 'note', 'cuemu recorded what the first '
+    + fmtInt(recLimit) + ' threads did; the striped ones ran too, but their accesses were not kept '
+    + '(the trace would be enormous). Every thread was still checked for errors.'));
+  if (zoomed) {
+    const back = el('button', null, '← all blocks');
+    back.onclick = () => { state.zoomBlock = null; render(); };
+    const row = el('div', 'row');
+    row.append(back);
+    grid.append(row);
+  }
+  const legend = el('div', 'legend');
+  for (const [cls, txt] of [['w', 'wrote memory'], ['r', 'read only'], ['', 'touched no memory (e.g. stopped by if (i < n))'],
+    ['race', 'data race'], ['err', 'illegal access']]) {
+    const s = el('span');
+    const i = el('i');
+    i.className = 'th ' + cls;
+    i.style.background = cls === '' ? 'var(--idle)' : '';
+    s.append(i, document.createTextNode(txt));
+    legend.append(s);
+  }
+  grid.append(legend);
+  grid.append(playRow(e, a));
+  out.push(grid);
+
+  /* selected thread */
+  out.push(threadCard(e, a));
+
+  /* memory */
+  const mem = el('div', 'card');
+  mem.append(el('h3', null, 'Device memory after the kernel'),
+    el('div', 'sub', 'Colour shows what this launch did to each element. Hover a cell to see which thread wrote it.'));
+  if (!a.touched.length) mem.append(el('div', 'sub', 'This kernel touched no device memory.'));
+  for (const id of a.touched) {
+    const al = allocs.get(id);
+    if (al) mem.append(memoryStrip(al, a.snaps.get(id), a, e));
+  }
+  out.push(mem);
+  return out;
+}
+
+function playRow(e, a) {
+  const row = el('div', 'row');
+  if (!e.order || !e.order.length) return row;
+  const btn = el('button', null, state.play ? '■ stop' : '▶ run the threads one by one');
+  btn.onclick = () => {
+    if (state.play) { stopPlay(); return; }
+    startPlay(e, a);
+  };
+  row.append(btn);
+  const info = el('span', 'sub', state.play ? '' : 'cuemu ran them in this order — a stand-in for the unpredictable order of a real GPU.');
+  info.id = 'playinfo';
+  row.append(info);
+  return row;
+}
+
+let playTimer = null;
+function stopPlay() {
+  clearInterval(playTimer);
+  playTimer = null;
+  state.play = null;
+  render();
+}
+function startPlay(e, a) {
+  state.play = { pos: 0 };
+  render();
+  const cells = document.querySelectorAll('#detail .th');
+  const memCells = document.querySelectorAll('#detail .cell');
+  cells.forEach(c => c.classList.add('pending'));
+  memCells.forEach(c => c.classList.add('pending'));
+  const byThread = new Map();
+  document.querySelectorAll('#detail .cell[data-t]').forEach(c => {
+    for (const t of c.dataset.t.split(',')) {
+      let l = byThread.get(+t);
+      if (!l) byThread.set(+t, l = []);
+      l.push(c);
+    }
+  });
+  const order = e.order;
+  const step = Math.max(1, Math.floor(order.length / 220));
+  let i = 0;
+  const info = document.getElementById('playinfo');
+  playTimer = setInterval(() => {
+    for (let k = 0; k < step && i < order.length; k++, i++) {
+      const t = order[i];
+      const cell = document.querySelector('#detail .th[data-t="' + t + '"]');
+      if (cell) cell.classList.remove('pending');
+      for (const c of byThread.get(t) || []) c.classList.remove('pending');
+    }
+    if (info) info.textContent = fmtInt(i) + ' of ' + fmtInt(order.length) + ' GPU threads have run';
+    if (i >= order.length) { clearInterval(playTimer); playTimer = null; state.play = null; }
+  }, 16);
+}
+
+function setThread(t) {
+  state.thread = t;
+  const card = document.getElementById('threadcard');
+  if (!card) return;
+  const e = T.events[state.sel];
+  card.replaceWith(threadCard(e, analyze(e)));
+  document.querySelectorAll('#detail .th.hl, #detail .cell.hl').forEach(c => c.classList.remove('hl'));
+  const cell = document.querySelector('#detail .th[data-t="' + t + '"]');
+  if (cell) cell.classList.add('hl');
+  const a = analyze(e);
+  for (const acc of a.perThread.get(t) || []) {
+    const c = document.querySelector('#detail .cell[data-key="' + acc.a + ':' + acc.idx + '"]');
+    if (c) c.classList.add('hl');
+  }
+}
+
+function threadCard(e, a) {
+  const c = el('div', 'card');
+  c.id = 'threadcard';
+  const t = state.thread;
+  if (t == null) {
+    c.append(el('h3', null, 'One GPU thread'), el('div', 'sub',
+      'Hover a thread above to see its indexes, the arithmetic that turns them into an array position, '
+      + 'and the memory it touched.'));
+    return c;
+  }
+  const p = threadPos(e, t);
+  const [bx, by, bz] = e.block;
+  c.append(el('h3', null, 'GPU thread #' + fmtInt(t)));
+  const kv = el('div', 'kv');
+  kv.append(kvItem('blockIdx', '(' + p.block.join(', ') + ')'), kvItem('threadIdx', '(' + p.thread.join(', ') + ')'),
+    kvItem('blockDim', '(' + e.block.join(', ') + ')'), kvItem('gridDim', '(' + e.grid.join(', ') + ')'));
+  c.append(kv);
+  const mathBox = el('div', 'note mono');
+  let lines = 'blockIdx.x * blockDim.x + threadIdx.x = ' + p.block[0] + ' * ' + bx + ' + ' + p.thread[0]
+    + ' = ' + (p.block[0] * bx + p.thread[0]);
+  if (by > 1 || e.grid[1] > 1)
+    lines += '\nblockIdx.y * blockDim.y + threadIdx.y = ' + p.block[1] + ' * ' + by + ' + ' + p.thread[1]
+      + ' = ' + (p.block[1] * by + p.thread[1]);
+  mathBox.textContent = lines;
+  mathBox.style.whiteSpace = 'pre';
+  c.append(mathBox);
+  const list = a.perThread.get(t);
+  const ul = el('div', 'kv');
+  ul.style.flexDirection = 'column';
+  if (!list || !list.length) {
+    ul.append(el('div', null, 'This thread touched no device memory — it was probably stopped by a bounds check.'));
+  } else {
+    for (const acc of list) {
+      const al = allocs.get(acc.a);
+      const snap = a.snaps.get(acc.a);
+      const val = snap && acc.idx >= 0 && acc.idx < snap.count ? ' = ' + fmtVal(snap.vals[acc.idx], al && al.type) : '';
+      const what = acc.f & 8 ? 'OUT OF BOUNDS' : acc.f & 64 ? 'ILLEGAL'
+        : acc.f & 128 ? 'atomically updated' : (acc.f & 2 ? (acc.f & 1 ? 'read+wrote' : 'wrote') : 'read');
+      const name = al ? al.name : 'unknown memory';
+      const row = el('div', 'mono');
+      row.textContent = what + '  ' + name + '[' + fmtInt(acc.idx) + ']' + (acc.f & 8 ? '' : val)
+        + (acc.f & 16 ? '   ← also touched by another thread (race)' : '')
+        + (acc.f & 32 ? '   ← value was never initialised' : '');
+      if (acc.f & (8 | 64)) row.style.color = 'var(--err)';
+      ul.append(row);
+    }
+  }
+  c.append(ul);
+  return c;
+}
+
+function memoryStrip(alloc, snap, a, ev, label) {
+  const box = el('div', 'strip');
+  const count = alloc.elemSize ? Math.floor(alloc.bytes / alloc.elemSize) : alloc.bytes;
+  const shown = Math.min(count, snap ? snap.count : count, 4096);
+  const hdr = el('div', 'hdr');
+  hdr.append(el('span', null, alloc.name + '[' + fmtInt(count) + '] · ' + (alloc.typeName || 'bytes')),
+    el('span', null, label || (shown < count ? 'showing the first ' + fmtInt(shown) : '')));
+  box.append(hdr);
+  const cells = el('div', 'cells');
+  const wide = shown <= 64;
+  for (let i = 0; i < shown; i++) {
+    const cell = el('div', 'cell' + (wide ? ' wide' : ''));
+    cell.dataset.key = alloc.id + ':' + i;
+    let cls = 'untouched';
+    if (a) {
+      const c = a.perCell.get(alloc.id + ':' + i);
+      if (c) {
+        cls = c.flags & 16 ? 'race' : c.write ? 'written' : 'read';
+        cell.dataset.t = c.threads.join(',');
+        cell.title = (c.write ? 'written' : 'read') + ' by GPU thread'
+          + (c.threads.length > 1 ? 's ' + c.threads.slice(0, 8).map(fmtInt).join(', ')
+            + (c.threads.length > 8 ? ' …' : '') : ' #' + fmtInt(c.threads[0]));
+      }
+    }
+    if (snap && !snap.init[i]) cls = 'uninit';
+    cell.className = 'cell' + (wide ? ' wide' : '') + ' ' + cls;
+    const v = snap && i < snap.count ? snap.vals[i] : null;
+    if (wide) cell.textContent = snap && !snap.init[i] ? '?' : fmtVal(v, alloc.type);
+    else if (snap) cell.title = (cell.title ? cell.title + ' · ' : '') + alloc.name + '[' + i + '] = '
+      + (snap.init[i] ? fmtVal(v, alloc.type) : 'never written');
+    cells.append(cell);
+  }
+  box.append(cells);
+  /* out-of-bounds accesses live past the end of the array */
+  if (a) {
+    const bad = [...a.perCell.values()].filter(c => c.a === alloc.id && (c.idx >= count || c.idx < 0));
+    if (bad.length) {
+      const note = el('div', 'note');
+      note.style.color = 'var(--err)';
+      const idxs = bad.map(c => c.idx).sort((x, y) => x - y);
+      note.textContent = bad.length + ' access' + (bad.length === 1 ? '' : 'es')
+        + ' landed outside this array, at index ' + (idxs[0] === idxs[idxs.length - 1] ? idxs[0]
+          : idxs[0] + ' … ' + idxs[idxs.length - 1]) + ' (valid: 0 … ' + (count - 1) + ').';
+      box.append(note);
+    }
+  }
+  return box;
+}
+
+function sourceCard(e, diags) {
+  const text = T.sources[e.file];
+  if (!text) return el('div');
+  const c = el('div', 'card');
+  const name = e.file.split('/').pop();
+  c.append(el('h3', null, name), el('div', 'sub', e.type === 'launch' && e.kfirst
+    ? 'The kernel and the line that launched it.' : 'Line ' + e.line + '.'));
+  const lines = text.split('\n');
+  const badLines = new Set(diags.map(d => d.line).filter(Boolean));
+  const ranges = [];
+  if (e.type === 'launch' && e.kfirst) ranges.push([e.kfirst, e.klast]);
+  ranges.push([Math.max(1, e.line - 3), Math.min(lines.length, e.line + 3)]);
+  const pre = el('pre', 'src');
+  let last = 0;
+  for (const [from, to] of ranges.sort((p, q) => p[0] - q[0])) {
+    if (from > last + 1 && last) pre.append(el('span', 'ln', '   ⋮\n'));
+    for (let n = Math.max(from, last + 1); n <= to; n++) {
+      const row = el('span', badLines.has(n) ? 'bad' : n === e.line ? 'hi' : '');
+      row.append(el('span', 'ln', String(n).padStart(4) + ' │ '), document.createTextNode(lines[n - 1] + '\n'));
+      pre.append(row);
+      last = n;
+    }
+  }
+  c.append(pre);
+  return c;
+}
+
+/* ---------- boot ---------- */
+function boot(trace) {
+  T = trace;
+  allocs = new Map(T.allocs.map(a => [a.id, a]));
+  const firstLaunch = T.events.findIndex(e => e.type === 'launch');
+  const firstProblem = T.diagnostics.length ? T.diagnostics[0].event : -1;
+  state = {
+    sel: firstProblem >= 0 ? firstProblem : firstLaunch >= 0 ? firstLaunch : 0,
+    thread: null, showInit: false, zoomBlock: null, play: null,
+  };
+  render();
+}
+
+if (typeof TRACE === 'object' && TRACE) {
+  boot(TRACE);
+} else {
+  const app = document.getElementById('app');
+  const drop = el('div');
+  drop.id = 'drop';
+  drop.innerHTML = '<h1>cuemu</h1><p>Drop a <code>.cuemu.json</code> trace here to view it.</p>';
+  app.append(drop);
+  document.body.ondragover = e => e.preventDefault();
+  document.body.ondrop = e => {
+    e.preventDefault();
+    const f = e.dataTransfer.files[0];
+    if (!f) return;
+    f.text().then(t => boot(JSON.parse(t)));
+  };
+}
+</script>
+</body>
+</html>

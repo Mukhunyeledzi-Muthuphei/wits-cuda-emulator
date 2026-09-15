@@ -1,0 +1,14 @@
+#!/bin/bash
+# A tiny stand-in for nvcc, so course instructions like `nvcc add.cu -o add` work.
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+args=()
+have_out=0
+for a in "$@"; do
+    case "$a" in
+        -o|-o*) have_out=1; args+=("$a") ;;
+        -O*|-std=*|--*|-Xcompiler|-fPIC|-G|-g) ;;   # ignored
+        *) args+=("$a") ;;
+    esac
+done
+[ $have_out = 1 ] || args+=(-o a.out)
+exec "$ROOT/bin/cuemu" build "${args[@]}"

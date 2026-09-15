@@ -1,0 +1,39 @@
+# program                    | check   | value
+# checks: diag (text that must appear on stderr), output (text on stdout),
+#         exit (status, default 0), clean (no cuemu errors or warnings)
+
+01_vector_add                | clean   |
+01_vector_add                | output  | -> correct
+02_missing_bounds_check      | diag    | [out-of-bounds-write]
+02_missing_bounds_check      | exit    | 1
+03_host_pointer_in_kernel    | diag    | [host-memory-in-kernel]
+03_host_pointer_in_kernel    | diag    | [device-error-state]
+03_host_pointer_in_kernel    | output  | copy back: cudaErrorIllegalAddress
+03_host_pointer_in_kernel    | exit    | 1
+04_forgot_to_copy            | diag    | [uninitialized-read]
+05_race_condition            | diag    | [data-race]
+05_race_condition            | exit    | 1
+06_grayscale_2d              | clean   |
+07_device_pointer_on_host    | diag    | [device-pointer-on-host]
+07_device_pointer_on_host    | diag    | 07_device_pointer_on_host.cu:25
+07_device_pointer_on_host    | exit    | 138
+08_block_count_rounding      | diag    | [partial-coverage]
+08_block_count_rounding      | diag    | [memcpy-uninitialized]
+09_bytes_not_elements        | diag    | [memcpy-partial]
+09_bytes_not_elements        | diag    | [uninitialized-read]
+10_host_function_in_kernel   | diag    | `malloc` cannot be called from GPU code
+10_host_function_in_kernel   | diag    | `clampValue` is a host function
+10_host_function_in_kernel   | diag    | `threadIdx` only exists inside kernels
+10_host_function_in_kernel   | diag    | kernel `relu` must be launched, not called
+10_host_function_in_kernel   | exit    | 1
+ok_edge_cases                | clean   |
+ok_edge_cases                | output  | EDGE OK
+err_api_misuse               | diag    | [invalid-configuration]
+err_api_misuse               | diag    | leaves z = 0
+err_api_misuse               | diag    | [memcpy-swapped]
+err_api_misuse               | diag    | [use-after-free]
+err_api_misuse               | diag    | [double-free]
+err_api_misuse               | diag    | [unchecked-error]
+err_api_misuse               | exit    | 1
+11_atomic_sum                | clean   |
+11_atomic_sum                | output  | sum = 1024 (expected 1024)
