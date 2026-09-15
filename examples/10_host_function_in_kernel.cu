@@ -1,6 +1,6 @@
 // 10 — BUG (caught before running): calling CPU-only code from a kernel.
 //
-// nvcc refuses to compile this. cuemu does too, and explains why.
+// nvcc refuses to compile this. wcu does too, and explains why.
 #include <stdio.h>
 #include <stdlib.h>
 #include <cuda.h>

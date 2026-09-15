@@ -1,6 +1,6 @@
 // 01 — Vector addition: the "hello world" of CUDA. This program is correct.
 //
-//   cuemu run --open examples/01_vector_add.cu
+//   wcu run --open examples/01_vector_add.cu
 #include <stdio.h>
 #include <stdlib.h>
 #include <cuda.h>

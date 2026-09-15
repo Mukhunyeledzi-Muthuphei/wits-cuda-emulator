@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>cuemu — GPU run</title>
+<title>WCU — GPU run</title>
 <style>
 :root {
   color-scheme: light dark;
@@ -77,7 +77,27 @@ header {
 .stat .s { font-size: 12px; color: var(--ink-2); }
 
 main { display: grid; grid-template-columns: minmax(260px, 320px) 1fr; gap: 0; align-items: start; }
+main.nosidebar { grid-template-columns: 1fr; }
 @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+
+/* collapsible panels */
+.topline {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; cursor: pointer;
+  padding: 7px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+  font-size: 12.5px; color: var(--ink);
+}
+.topline:hover { background: var(--panel-2); }
+.topline .chev { color: var(--ink-2); display: inline-block; transition: transform .12s ease; }
+.topline.open .chev { transform: rotate(90deg); }
+.topline .dim { color: var(--ink-2); font-family: var(--mono); font-size: 12px; }
+.iconbtn {
+  font: inherit; font-size: 12.5px; padding: 3px 10px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink);
+}
+.iconbtn:hover { border-color: var(--accent); }
+header .burger { margin-right: 2px; }
+.detailnav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.detailnav .now { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
 aside { border-right: 1px solid var(--line); background: var(--panel); min-height: calc(100vh - 140px); }
 section.pane { padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .pane h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); margin-bottom: 10px; }
@@ -180,7 +200,7 @@ button:hover { border-color: var(--accent); }
 <body>
 <div id="app"></div>
 <script>
-const TRACE = "__CUEMU_TRACE_JSON__";
+const TRACE = "__WCU_TRACE_JSON__";
 
 /* ---------- helpers ---------- */
 const el = (tag, cls, text) => {
@@ -310,9 +330,12 @@ function render() {
 
 function renderHeader() {
   const h = el('header');
-  const brand = el('div', 'brand', 'cuemu');
-  brand.append(el('span', null, 'CUDA on a machine with no GPU'));
-  h.append(brand, el('div', 'prog', T.program));
+  const burger = el('button', 'iconbtn burger', '☰');
+  burger.title = 'show or hide the step list and problems';
+  burger.onclick = () => toggle('sideOpen');
+  const brand = el('div', 'brand', 'WCU');
+  brand.append(el('span', null, 'Wits CUDA emulator'));
+  h.append(burger, brand, el('div', 'prog', T.program));
   const bad = T.totals.errors, warn = T.totals.warnings;
   if (T.status === 'crashed') h.append(el('div', 'badge err', 'crashed'));
   if (bad) h.append(el('div', 'badge err', bad + (bad === 1 ? ' error' : ' errors')));
@@ -331,6 +354,14 @@ function stat(k, v, s) {
 
 function renderStats() {
   const t = T.totals, m = T.model;
+  const wrap = el('div');
+  const bar = el('div', 'topline' + (state.statsOpen ? ' open' : ''));
+  bar.append(el('span', 'chev', '›'), el('span', null, 'Run summary'),
+    el('span', 'dim', fmtMs(t.endMs) + ' simulated · ' + fmtInt(t.threads) + ' GPU threads · '
+      + fmtBytes(t.peakBytes) + ' of device memory'));
+  bar.onclick = () => toggle('statsOpen');
+  wrap.append(bar);
+  if (!state.statsOpen) return wrap;
   const box = el('div', 'stats');
   const cpu = T.events.filter(e => e.type === 'launch').reduce((s, e) => s + (e.cpuMs || 0), 0);
   box.append(
@@ -340,18 +371,47 @@ function renderStats() {
     stat('Same work on 1 CPU core', fmtMs(cpu), 'model estimate, for comparison'),
     stat('Device memory', fmtBytes(t.peakBytes), 'peak of ' + fmtBytes(m.deviceBytes) + ' simulated'),
   );
-  return box;
+  wrap.append(box);
+  return wrap;
+}
+
+function toggle(key) {
+  state[key] = !state[key];
+  try { localStorage.setItem('wcu.ui', JSON.stringify({ sideOpen: state.sideOpen, statsOpen: state.statsOpen })); }
+  catch (e) { /* file:// without storage — the setting just will not stick */ }
+  render();
 }
 
 function renderMain() {
-  const main = el('main');
-  const side = el('aside');
-  side.append(renderTimeline(), renderSteps(), renderProblems());
+  const main = el('main', state.sideOpen ? '' : 'nosidebar');
+  if (state.sideOpen) {
+    const side = el('aside');
+    side.append(renderTimeline(), renderSteps(), renderProblems());
+    main.append(side);
+  }
   const detail = el('section');
   detail.id = 'detail';
-  detail.append(renderDetail());
-  main.append(side, detail);
+  detail.append(renderNav(), renderDetail());
+  main.append(detail);
   return main;
+}
+
+/* Navigation for when the sidebar is hidden: move between steps without opening it. */
+function renderNav() {
+  const nav = el('div', 'detailnav');
+  const side = el('button', 'iconbtn', (state.sideOpen ? '◀ hide' : '☰ ') + ' steps'
+    + (T.diagnostics.length ? ' & ' + T.diagnostics.length + ' problem' + (T.diagnostics.length === 1 ? '' : 's') : ''));
+  side.onclick = () => toggle('sideOpen');
+  const prev = el('button', 'iconbtn', '◀');
+  prev.title = 'previous step';
+  prev.onclick = () => select(state.sel - 1);
+  const next = el('button', 'iconbtn', '▶');
+  next.title = 'next step';
+  next.onclick = () => select(state.sel + 1);
+  const e = T.events[state.sel];
+  nav.append(side, prev, next,
+    el('span', 'now', 'step ' + (state.sel + 1) + ' of ' + T.events.length + ': ' + (e ? describe(e) : '')));
+  return nav;
 }
 
 function renderTimeline() {
@@ -586,7 +646,7 @@ function launchPanels(e) {
   head.append(kv);
   if (e.ok !== false) {
     head.append(el('div', 'note', 'On a real GPU these ' + fmtInt(e.threads)
-      + ' threads run at the same time, in groups of 32 called warps, spread over the GPU\'s cores. cuemu ran them '
+      + ' threads run at the same time, in groups of 32 called warps, spread over the GPU\'s cores. wcu ran them '
       + (T.order === 'shuffle' ? 'one at a time in a shuffled order' : 'one at a time in order')
       + ' on your CPU — so anything that depends on thread order shows up as a data race, and printf output comes '
       + 'out jumbled, just like on real hardware.'));
@@ -643,7 +703,7 @@ function launchPanels(e) {
   grid.append(blocks);
   if (!showThreads) grid.append(el('div', 'note', 'This launch has ' + fmtInt(nblocks * per)
     + ' threads — too many to draw individually. Click a block to look inside it.'));
-  if (e.threads > recLimit) grid.append(el('div', 'note', 'cuemu recorded what the first '
+  if (e.threads > recLimit) grid.append(el('div', 'note', 'wcu recorded what the first '
     + fmtInt(recLimit) + ' threads did; the striped ones ran too, but their accesses were not kept '
     + '(the trace would be enormous). Every thread was still checked for errors.'));
   if (zoomed) {
@@ -692,7 +752,7 @@ function playRow(e, a) {
     startPlay(e, a);
   };
   row.append(btn);
-  const info = el('span', 'sub', state.play ? '' : 'cuemu ran them in this order — a stand-in for the unpredictable order of a real GPU.');
+  const info = el('span', 'sub', state.play ? '' : 'wcu ran them in this order — a stand-in for the unpredictable order of a real GPU.');
   info.id = 'playinfo';
   row.append(info);
   return row;
@@ -885,9 +945,13 @@ function boot(trace) {
   allocs = new Map(T.allocs.map(a => [a.id, a]));
   const firstLaunch = T.events.findIndex(e => e.type === 'launch');
   const firstProblem = T.diagnostics.length ? T.diagnostics[0].event : -1;
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('wcu.ui') || '{}'); } catch (e) { saved = {}; }
   state = {
     sel: firstProblem >= 0 ? firstProblem : firstLaunch >= 0 ? firstLaunch : 0,
     thread: null, showInit: false, zoomBlock: null, play: null,
+    sideOpen: saved.sideOpen === true,      /* both panels start collapsed */
+    statsOpen: saved.statsOpen === true,
   };
   render();
 }
@@ -898,7 +962,7 @@ if (typeof TRACE === 'object' && TRACE) {
   const app = document.getElementById('app');
   const drop = el('div');
   drop.id = 'drop';
-  drop.innerHTML = '<h1>cuemu</h1><p>Drop a <code>.cuemu.json</code> trace here to view it.</p>';
+  drop.innerHTML = '<h1>WCU</h1><p>Drop a <code>.wcu.json</code> trace here to view it.</p>';
   app.append(drop);
   document.body.ondragover = e => e.preventDefault();
   document.body.ondrop = e => {

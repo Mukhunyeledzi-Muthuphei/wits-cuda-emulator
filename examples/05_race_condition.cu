@@ -2,7 +2,7 @@
 //
 // Every GPU thread does `sum[0] += a[i]` at the same time. On a real GPU most
 // of those updates are lost and the total is wrong (and different every run).
-// cuemu runs threads one at a time, so the answer happens to look right here,
+// wcu runs threads one at a time, so the answer happens to look right here,
 // which is exactly why it reports the race.
 //
 // The fix is in examples/11_atomic_sum.cu.

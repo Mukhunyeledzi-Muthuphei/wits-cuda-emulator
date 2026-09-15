@@ -1,30 +1,30 @@
 #!/bin/bash
-# cuemu — build and run CUDA C programs without an NVIDIA GPU.
+# wcu — build and run CUDA C programs without an NVIDIA GPU.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CC="${CC:-clang}"
-export CUEMU_VIEWER="${CUEMU_VIEWER:-$ROOT/viewer/viewer.html}"
+export WCU_VIEWER="${WCU_VIEWER:-$ROOT/viewer/viewer.html}"
 
 usage() {
     cat <<EOF
 usage:
-  cuemu run [--open] file.cu [-- program arguments]
+  wcu run [--open] file.cu [-- program arguments]
         build and run; --open shows the visualization in your browser
-  cuemu build file.cu [more .cu/.c files] [-o program] [compiler flags]
-  cuemu translate file.cu
-        print the plain C that cuemu generates
+  wcu build file.cu [more .cu/.c files] [-o program] [compiler flags]
+  wcu translate file.cu
+        print the plain C that wcu generates
 
 environment:
-  CUEMU_ORDER=sequential  run GPU threads in order (default: shuffled, like a real GPU)
-  CUEMU_STRICT=1          stop at the first error
-  CUEMU_DEVICE_MB=512     size of the simulated device memory (default 4096)
-  CUEMU_TRACE=0           skip writing the visualization
+  WCU_ORDER=sequential  run GPU threads in order (default: shuffled, like a real GPU)
+  WCU_STRICT=1          stop at the first error
+  WCU_DEVICE_MB=512     size of the simulated device memory (default 4096)
+  WCU_TRACE=0           skip writing the visualization
 EOF
 }
 
 ensure_built() {
-    make -s -C "$ROOT" all >/dev/null || { echo "cuemu: failed to build the emulator" >&2; exit 1; }
+    make -s -C "$ROOT" all >/dev/null || { echo "wcu: failed to build the emulator" >&2; exit 1; }
 }
 
 build() {
@@ -40,7 +40,7 @@ build() {
         esac
     done
     if [ ${#srcs[@]} -eq 0 ]; then
-        echo "cuemu: no source files given" >&2
+        echo "wcu: no source files given" >&2
         exit 2
     fi
     if [ -z "$out" ]; then
@@ -48,7 +48,7 @@ build() {
         out="${name%.*}"
     fi
     local work
-    work="$(dirname "$out")/.cuemu-obj"
+    work="$(dirname "$out")/.wcu-obj"
     mkdir -p "$work"
     for s in "${srcs[@]}"; do
         name="$(basename "$s")"
@@ -56,13 +56,13 @@ build() {
         c="$s"
         if [[ "$s" == *.cu ]]; then
             c="$work/$name.cu.c"
-            "$ROOT/build/cuemu-translate" "$s" -o "$c" || exit 1
+            "$ROOT/build/wcu-translate" "$s" -o "$c" || exit 1
         fi
         "$CC" -std=gnu17 -g -O0 -Wall -Wno-unused-variable -Wno-unused-function \
             -I"$ROOT/include" ${cflags[@]+"${cflags[@]}"} -c "$c" -o "$work/$name.o" || exit 1
         objs+=("$work/$name.o")
     done
-    "$CC" -g "${objs[@]}" "$ROOT/build/libcuemu.a" -lm ${ldflags[@]+"${ldflags[@]}"} -o "$out" || exit 1
+    "$CC" -g "${objs[@]}" "$ROOT/build/libwcu.a" -lm ${ldflags[@]+"${ldflags[@]}"} -o "$out" || exit 1
 }
 
 run() {
@@ -81,14 +81,14 @@ run() {
     fi
     name="$(basename "${files[0]}")"
     name="${name%.*}"
-    mkdir -p .cuemu
-    exe=".cuemu/$name"
+    mkdir -p .wcu
+    exe=".wcu/$name"
     build "${files[@]}" -o "$exe"
     local status=0
     "$exe" ${args[@]+"${args[@]}"} || status=$?
-    if [ "$open" = 1 ] && [ -f "$exe.cuemu.html" ]; then
-        if command -v open >/dev/null; then open "$exe.cuemu.html"
-        elif command -v xdg-open >/dev/null; then xdg-open "$exe.cuemu.html"
+    if [ "$open" = 1 ] && [ -f "$exe.wcu.html" ]; then
+        if command -v open >/dev/null; then open "$exe.wcu.html"
+        elif command -v xdg-open >/dev/null; then xdg-open "$exe.wcu.html"
         fi
     fi
     exit $status
@@ -99,7 +99,7 @@ cmd="${1:-}"
 case "$cmd" in
     run) ensure_built; run "$@" ;;
     build) ensure_built; build "$@" ;;
-    translate) ensure_built; exec "$ROOT/build/cuemu-translate" "$@" ;;
+    translate) ensure_built; exec "$ROOT/build/wcu-translate" "$@" ;;
     -h|--help|help|"") usage ;;
-    *) echo "cuemu: unknown command '$cmd'" >&2; usage; exit 2 ;;
+    *) echo "wcu: unknown command '$cmd'" >&2; usage; exit 2 ;;
 esac

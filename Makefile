@@ -3,15 +3,15 @@ BUILD  := $(ROOT)/build
 CC     := clang
 CFLAGS := -std=gnu17 -O2 -g -Wall -Wextra
 
-all: $(BUILD)/cuemu-translate $(BUILD)/libcuemu.a
+all: $(BUILD)/wcu-translate $(BUILD)/libwcu.a
 
-$(BUILD)/cuemu-translate: src/translate.c | $(BUILD)
+$(BUILD)/wcu-translate: src/translate.c | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $<
 
-$(BUILD)/runtime.o: src/runtime.c include/cuemu.h | $(BUILD)
-	$(CC) $(CFLAGS) -Iinclude -DCUEMU_DEFAULT_VIEWER='"$(ROOT)/viewer/viewer.html"' -c -o $@ $<
+$(BUILD)/runtime.o: src/runtime.c include/wcu.h | $(BUILD)
+	$(CC) $(CFLAGS) -Iinclude -DWCU_DEFAULT_VIEWER='"$(ROOT)/viewer/viewer.html"' -c -o $@ $<
 
-$(BUILD)/libcuemu.a: $(BUILD)/runtime.o
+$(BUILD)/libwcu.a: $(BUILD)/runtime.o
 	rm -f $@ && ar rcs $@ $^
 
 $(BUILD):

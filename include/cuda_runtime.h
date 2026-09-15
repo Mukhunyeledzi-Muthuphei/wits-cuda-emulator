@@ -1,2 +1,2 @@
-/* Compatibility shim: CUDA programs may include this; cuemu provides it. */
-#include "cuemu.h"
+/* Compatibility shim: CUDA programs may include this; wcu provides it. */
+#include "wcu.h"

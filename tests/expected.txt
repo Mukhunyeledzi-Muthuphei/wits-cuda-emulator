@@ -1,6 +1,6 @@
 # program                    | check   | value
 # checks: diag (text that must appear on stderr), output (text on stdout),
-#         exit (status, default 0), clean (no cuemu errors or warnings)
+#         exit (status, default 0), clean (no wcu errors or warnings)
 
 01_vector_add                | clean   |
 01_vector_add                | output  | -> correct

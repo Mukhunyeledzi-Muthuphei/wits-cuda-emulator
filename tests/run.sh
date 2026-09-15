@@ -10,7 +10,7 @@ trim() { sed -E 's/^ +//; s/ +$//'; }
 
 for f in "$ROOT"/examples/*.cu "$ROOT"/tests/cases/*.cu; do
     name="$(basename "$f" .cu)"
-    (cd "$WORK" && CUEMU_TRACE_OUT="$WORK/$name.json" NO_COLOR=1 "$ROOT/bin/cuemu" run "$f" >"$name.out" 2>"$name.err")
+    (cd "$WORK" && WCU_TRACE_OUT="$WORK/$name.json" NO_COLOR=1 "$ROOT/bin/wcu" run "$f" >"$name.out" 2>"$name.err")
     status=$?
     problems=()
     want_exit=0
@@ -26,7 +26,7 @@ for f in "$ROOT"/examples/*.cu "$ROOT"/tests/cases/*.cu; do
             diag)   grep -qF -- "$value" "$WORK/$name.err" || problems+=("stderr lacks: $value") ;;
             output) grep -qF -- "$value" "$WORK/$name.out" || problems+=("stdout lacks: $value") ;;
             exit)   want_exit="$value" ;;
-            clean)  ! grep -qE "cuemu (error|warning)|error:" "$WORK/$name.err" || problems+=("expected a clean run") ;;
+            clean)  ! grep -qE "wcu (error|warning)|error:" "$WORK/$name.err" || problems+=("expected a clean run") ;;
         esac
     done < <(grep -vE '^(#|$)' "$ROOT/tests/expected.txt")
 

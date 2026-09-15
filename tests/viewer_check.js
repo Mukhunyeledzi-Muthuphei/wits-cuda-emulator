@@ -53,8 +53,8 @@ for (const file of traces) {
   global.setInterval = () => 0;
   global.clearInterval = () => {};
 
-  const script = body.replace('"__CUEMU_TRACE_JSON__"', fs.readFileSync(file, 'utf8'))
-    + '\n;globalThis.__t = { select, threadCard, analyze, T: () => T, state: () => state };';
+  const script = body.replace('"__WCU_TRACE_JSON__"', fs.readFileSync(file, 'utf8'))
+    + '\n;globalThis.__t = { select, threadCard, analyze, toggle, render, T: () => T, state: () => state };';
   const name = file.split('/').pop();
   try {
     (0, eval)(script);
@@ -71,7 +71,9 @@ for (const file of traces) {
         if (!card.textContent.includes('GPU thread')) throw new Error('thread card is empty');
       }
     }
-    if (!app.textContent.includes('cuemu')) throw new Error('page rendered empty');
+    for (const key of ['sideOpen', 'statsOpen', 'sideOpen', 'statsOpen']) t.toggle(key);  // expand and collapse both panels
+    if (!app.textContent.includes('WCU')) throw new Error('page rendered empty');
+    if (t.state().sideOpen || t.state().statsOpen) throw new Error('panels did not collapse again');
     console.log('  ok    viewer: ' + name);
   } catch (e) {
     failures++;

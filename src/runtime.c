@@ -1,10 +1,10 @@
 /*
- * runtime.c — the cuemu runtime.
+ * runtime.c — the wcu runtime.
  *
  * Device memory lives at fake addresses inside a reserved, inaccessible
  * address range, so host code that dereferences a device pointer crashes
  * (and we explain why). The real bytes live in ordinary heap buffers that
- * kernels reach through cuemu_access(), which checks bounds, tracks which
+ * kernels reach through wcu_access(), which checks bounds, tracks which
  * bytes were ever written, detects data races between GPU threads and
  * records a trace for the visualizer.
  *
@@ -12,7 +12,7 @@
  * point is to show where time goes on a real GPU, not to measure your Mac.
  */
 #define _DARWIN_C_SOURCE 1
-#include "cuemu.h"
+#include "wcu.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -30,8 +30,8 @@
 #include <sys/ucontext.h>
 #endif
 
-#ifndef CUEMU_DEFAULT_VIEWER
-#define CUEMU_DEFAULT_VIEWER ""
+#ifndef WCU_DEFAULT_VIEWER
+#define WCU_DEFAULT_VIEWER ""
 #endif
 
 /* ---- The simulated GPU ---------------------------------------------------- */
@@ -60,7 +60,7 @@
 #define SNAP_BUDGET           (48u << 20)
 #define MAX_KDIAG             64
 
-_Thread_local cuemu_tls_state cuemu_tls;
+_Thread_local wcu_tls_state wcu_tls;
 
 /* ---- String buffers ------------------------------------------------------- */
 
@@ -72,7 +72,7 @@ static void sb_reserve(sbuf *b, size_t extra)
     size_t cap = b->cap ? b->cap : 4096;
     while (cap < b->n + extra + 1) cap *= 2;
     char *p = realloc(b->p, cap);
-    if (!p) { fputs("cuemu: out of memory\n", stderr); abort(); }
+    if (!p) { fputs("wcu: out of memory\n", stderr); abort(); }
     b->p = p;
     b->cap = cap;
 }
@@ -395,7 +395,7 @@ static void report(int sev, const char *code, const char *file, int line, int al
     if (G.printed < MAX_DIAG_PRINTED) {
         const char *sevname = sev == SEV_ERROR ? "error" : sev == SEV_WARNING ? "warning" : "note";
         const char *sevcol = sev == SEV_ERROR ? RED : sev == SEV_WARNING ? YELLOW : CYAN;
-        fprintf(stderr, "\n%scuemu %s%s%s[%s]%s: %s%s%s\n", sevcol, sevname, RESET, DIM, code, RESET,
+        fprintf(stderr, "\n%swcu %s%s%s[%s]%s: %s%s%s\n", sevcol, sevname, RESET, DIM, code, RESET,
                 BOLD, title, RESET);
         if (file && line > 0) {
             fprintf(stderr, "   %s-->%s %s:%d\n", BLUE, RESET, rel_path(file), line);
@@ -410,7 +410,7 @@ static void report(int sev, const char *code, const char *file, int line, int al
             fprintf(stderr, "      %s=%s %-8s %s\n", BLUE, RESET, rows[i].label, rows[i].text);
         if (hint) fprintf(stderr, "      %s= hint%s     %s\n", CYAN, RESET, hint);
     } else if (G.printed == MAX_DIAG_PRINTED) {
-        fprintf(stderr, "\n%scuemu: too many problems; the rest are only in the visualization.%s\n", DIM, RESET);
+        fprintf(stderr, "\n%swcu: too many problems; the rest are only in the visualization.%s\n", DIM, RESET);
     }
     G.printed++;
 
@@ -540,13 +540,13 @@ static void ensure_init(void)
     if (G.initialized) return;
     G.initialized = 1;
     G.color = isatty(2) && !getenv("NO_COLOR");
-    G.tracing = !(getenv("CUEMU_TRACE") && strcmp(getenv("CUEMU_TRACE"), "0") == 0);
-    G.strict = getenv("CUEMU_STRICT") && strcmp(getenv("CUEMU_STRICT"), "0") != 0;
-    G.shuffle = !(getenv("CUEMU_ORDER") && strcmp(getenv("CUEMU_ORDER"), "sequential") == 0);
-    G.seed = getenv("CUEMU_SEED") ? strtoull(getenv("CUEMU_SEED"), NULL, 10) : 0x5eed2026u;
+    G.tracing = !(getenv("WCU_TRACE") && strcmp(getenv("WCU_TRACE"), "0") == 0);
+    G.strict = getenv("WCU_STRICT") && strcmp(getenv("WCU_STRICT"), "0") != 0;
+    G.shuffle = !(getenv("WCU_ORDER") && strcmp(getenv("WCU_ORDER"), "sequential") == 0);
+    G.seed = getenv("WCU_SEED") ? strtoull(getenv("WCU_SEED"), NULL, 10) : 0x5eed2026u;
     G.page = (size_t)getpagesize();
 
-    size_t mb = getenv("CUEMU_DEVICE_MB") ? strtoull(getenv("CUEMU_DEVICE_MB"), NULL, 10) : 4096;
+    size_t mb = getenv("WCU_DEVICE_MB") ? strtoull(getenv("WCU_DEVICE_MB"), NULL, 10) : 4096;
     G.limit = (mb ? mb : 4096) << 20;
 
     for (uintptr_t sz = (uintptr_t)64 << 30; sz >= ((uintptr_t)1 << 30); sz >>= 1) {
@@ -621,14 +621,14 @@ static cudaError sticky_fail(const char *api, const char *file, int line)
 
 /* ---- dim3 ----------------------------------------------------------------------- */
 
-dim3 cuemu_dim3_from_int(long long n)
+dim3 wcu_dim3_from_int(long long n)
 {
     dim3 d = { (unsigned)n, 1, 1 };
     if (n < 0 || n > UINT_MAX) d.x = UINT_MAX;
     return d;
 }
 
-dim3 cuemu_dim3_n(const long long *v, size_t n)
+dim3 wcu_dim3_n(const long long *v, size_t n)
 {
     dim3 d = { 1, 1, 1 };
     unsigned *f[3] = { &d.x, &d.y, &d.z };
@@ -638,7 +638,7 @@ dim3 cuemu_dim3_n(const long long *v, size_t n)
 
 /* ---- Memory API ------------------------------------------------------------------ */
 
-cudaError cuemu_malloc(void **devPtr, size_t size, const char *expr, const char *file, int line)
+cudaError wcu_malloc(void **devPtr, size_t size, const char *expr, const char *file, int line)
 {
     api_enter(file);
     char name[64];
@@ -664,7 +664,7 @@ cudaError cuemu_malloc(void **devPtr, size_t size, const char *expr, const char 
         fmt_bytes(G.limit - G.used, left, sizeof left);
         fmt_bytes(G.limit, total, sizeof total);
         row_t r[1];
-        ROW(r[0], "device", "%s free of %s (set CUEMU_DEVICE_MB to change)", left, total);
+        ROW(r[0], "device", "%s free of %s (set WCU_DEVICE_MB to change)", left, total);
         snprintf(title, sizeof title, "out of device memory: cudaMalloc(%s) for `%s`", want, name);
         report(SEV_ERROR, "out-of-memory", file, line, -1, title, r, 1,
                "Check the size: cudaMalloc takes bytes, e.g. n * sizeof(float). Also free memory you no longer need.");
@@ -722,7 +722,7 @@ cudaError cuemu_malloc(void **devPtr, size_t size, const char *expr, const char 
     return err;
 }
 
-cudaError cuemu_free(void *devPtr, const char *expr, const char *file, int line)
+cudaError wcu_free(void *devPtr, const char *expr, const char *file, int line)
 {
     api_enter(file);
     char name[64], title[256], desc[400];
@@ -778,7 +778,7 @@ cudaError cuemu_free(void *devPtr, const char *expr, const char *file, int line)
     return err;
 }
 
-cudaError cuemu_malloc_host(void **ptr, size_t size, const char *expr, const char *file, int line)
+cudaError wcu_malloc_host(void **ptr, size_t size, const char *expr, const char *file, int line)
 {
     api_enter(file);
     (void)expr;
@@ -799,7 +799,7 @@ cudaError cuemu_malloc_host(void **ptr, size_t size, const char *expr, const cha
     return err;
 }
 
-cudaError cuemu_free_host(void *ptr, const char *file, int line)
+cudaError wcu_free_host(void *ptr, const char *file, int line)
 {
     api_enter(file);
     for (int i = 0; i < G.npinned; i++) {
@@ -912,7 +912,7 @@ static int check_range(const ptrinfo *pi, size_t count, const char *role, const 
     return 1;
 }
 
-cudaError cuemu_memcpy(void *dst, const void *src, size_t count, cudaMemcpyKind kind,
+cudaError wcu_memcpy(void *dst, const void *src, size_t count, cudaMemcpyKind kind,
                        const char *dst_expr, const char *src_expr, const char *file, int line)
 {
     api_enter(file);
@@ -1043,7 +1043,7 @@ cudaError cuemu_memcpy(void *dst, const void *src, size_t count, cudaMemcpyKind 
     return err;
 }
 
-cudaError cuemu_memset(void *devPtr, int value, size_t count, const char *expr, const char *file, int line)
+cudaError wcu_memset(void *devPtr, int value, size_t count, const char *expr, const char *file, int line)
 {
     api_enter(file);
     char name[64];
@@ -1074,7 +1074,7 @@ cudaError cuemu_memset(void *devPtr, int value, size_t count, const char *expr, 
     return err;
 }
 
-cudaError cuemu_synchronize(const char *file, int line)
+cudaError wcu_synchronize(const char *file, int line)
 {
     api_enter(file);
     double h0 = G.host_ms;
@@ -1089,7 +1089,7 @@ cudaError cuemu_synchronize(const char *file, int line)
     return cudaSuccess;
 }
 
-cudaError cuemu_get_last_error(int peek, const char *file, int line)
+cudaError wcu_get_last_error(int peek, const char *file, int line)
 {
     api_enter(file);
     (void)line;
@@ -1101,7 +1101,7 @@ cudaError cuemu_get_last_error(int peek, const char *file, int line)
     return e;
 }
 
-cudaError cuemu_mem_get_info(size_t *free_bytes, size_t *total_bytes)
+cudaError wcu_mem_get_info(size_t *free_bytes, size_t *total_bytes)
 {
     ensure_init();
     if (free_bytes) *free_bytes = G.limit - G.used;
@@ -1109,7 +1109,7 @@ cudaError cuemu_mem_get_info(size_t *free_bytes, size_t *total_bytes)
     return cudaSuccess;
 }
 
-cudaError cuemu_device_reset(const char *file, int line)
+cudaError wcu_device_reset(const char *file, int line)
 {
     api_enter(file);
     for (int i = 0; i < G.nallocs; i++) {
@@ -1243,7 +1243,7 @@ static const char *config_problem(dim3 grid, dim3 block, char *hint, size_t hlen
     return NULL;
 }
 
-int cuemu_launch_begin(cuemu_launch *L, const char *kernel, dim3 grid, dim3 block, const char *file, int line)
+int wcu_launch_begin(wcu_launch *L, const char *kernel, dim3 grid, dim3 block, const char *file, int line)
 {
     api_enter(file);
     memset(L, 0, sizeof *L);
@@ -1307,7 +1307,7 @@ static void finish_thread(void)
     if (ops > C.max_ops) C.max_ops = ops;
 }
 
-int cuemu_launch_next(cuemu_launch *L)
+int wcu_launch_next(wcu_launch *L)
 {
     if (!L->ok) return 0;
     if (L->next > 0) finish_thread();
@@ -1316,15 +1316,15 @@ int cuemu_launch_next(cuemu_launch *L)
     L->next++;
 
     long long b = t / C.per_block, th = t % C.per_block;
-    cuemu_tls.block_idx = (dim3){ (unsigned)(b % C.grid.x), (unsigned)(b / C.grid.x % C.grid.y),
+    wcu_tls.block_idx = (dim3){ (unsigned)(b % C.grid.x), (unsigned)(b / C.grid.x % C.grid.y),
                                   (unsigned)(b / ((long long)C.grid.x * C.grid.y)) };
-    cuemu_tls.thread_idx = (dim3){ (unsigned)(th % C.block.x), (unsigned)(th / C.block.x % C.block.y),
+    wcu_tls.thread_idx = (dim3){ (unsigned)(th % C.block.x), (unsigned)(th / C.block.x % C.block.y),
                                    (unsigned)(th / ((long long)C.block.x * C.block.y)) };
-    cuemu_tls.block_dim = C.block;
-    cuemu_tls.grid_dim = C.grid;
-    cuemu_tls.thread_id = t;
-    cuemu_tls.in_kernel = 1;
-    cuemu_tls.kernel_fp = NULL;
+    wcu_tls.block_dim = C.block;
+    wcu_tls.grid_dim = C.grid;
+    wcu_tls.thread_id = t;
+    wcu_tls.in_kernel = 1;
+    wcu_tls.kernel_fp = NULL;
     C.cur_thread = t;
     C.ops = 0;
     C.thread_recs = 0;
@@ -1339,10 +1339,10 @@ int cuemu_launch_next(cuemu_launch *L)
     return 1;
 }
 
-void cuemu_kernel_enter(void *frame, const char *kernel, int first_line, int last_line)
+void wcu_kernel_enter(void *frame, const char *kernel, int first_line, int last_line)
 {
     (void)kernel;
-    cuemu_tls.kernel_fp = frame;
+    wcu_tls.kernel_fp = frame;
     if (!C.kfirst) { C.kfirst = first_line; C.klast = last_line; }
 }
 
@@ -1350,7 +1350,7 @@ static void kdiag(int kind, alloc_t *a, const char *name, const char *file, int 
                   long long other, uintptr_t addr)
 {
     int aid = a ? a->id : -1;
-    long long t = cuemu_tls.thread_id;
+    long long t = wcu_tls.thread_id;
     kdiag_t *d = NULL;
     for (int i = 0; i < C.nkd; i++) {
         kdiag_t *k = &C.kd[i];
@@ -1373,7 +1373,7 @@ static void kdiag(int kind, alloc_t *a, const char *name, const char *file, int 
 static void rec_add(int alloc, long long index, int flags)
 {
     if (!G.tracing || !C.active) return;
-    long long t = cuemu_tls.thread_id;
+    long long t = wcu_tls.thread_id;
     if (t >= REC_MAX_THREAD_ID || G.rec_total >= REC_MAX_TOTAL || C.thread_recs >= REC_MAX_PER_THREAD) {
         C.rec_dropped++;
         return;
@@ -1398,17 +1398,17 @@ static void *scratch(size_t n)
     return big;
 }
 
-void *cuemu_access(void *base, size_t esz, long long index, int rw, int type, const char *name,
+void *wcu_access(void *base, size_t esz, long long index, int rw, int type, const char *name,
                    const char *file, int line)
 {
     uintptr_t b = (uintptr_t)base;
-    int in_kernel = cuemu_tls.in_kernel;
-    int atomic = rw & CUEMU_ATOMIC;
-    rw &= CUEMU_RW | CUEMU_ADDR;
+    int in_kernel = wcu_tls.in_kernel;
+    int atomic = rw & WCU_ATOMIC;
+    rw &= WCU_RW | WCU_ADDR;
 
     if (!in_region(b)) {
-        if (!in_kernel || rw == CUEMU_ADDR) return (char *)base + index * (long long)esz;
-        if (cuemu_tls.kernel_fp && b >= G.stack_lo && b < (uintptr_t)cuemu_tls.kernel_fp)
+        if (!in_kernel || rw == WCU_ADDR) return (char *)base + index * (long long)esz;
+        if (wcu_tls.kernel_fp && b >= G.stack_lo && b < (uintptr_t)wcu_tls.kernel_fp)
             return (char *)base + index * (long long)esz;           /* a kernel-local variable */
         C.ops++;
         if (b < 65536) {
@@ -1423,7 +1423,7 @@ void *cuemu_access(void *base, size_t esz, long long index, int rw, int type, co
 
     alloc_t *a = find_alloc(b);
     if (!in_kernel) {
-        if (rw == CUEMU_ADDR) return (char *)base + index * (long long)esz;
+        if (rw == WCU_ADDR) return (char *)base + index * (long long)esz;
         static int reported_line;
         if (reported_line != line) {
             reported_line = line;
@@ -1452,19 +1452,19 @@ void *cuemu_access(void *base, size_t esz, long long index, int rw, int type, co
     }
 
     long long off = (long long)(b - a->addr) + index * (long long)esz;
-    if (rw == CUEMU_ADDR) return (void *)(b + (uintptr_t)(index * (long long)esz));
+    if (rw == WCU_ADDR) return (void *)(b + (uintptr_t)(index * (long long)esz));
     if (!a->type) { a->type = type; a->elem_size = (int)esz; }
     long long ei = off >= 0 ? off / (long long)esz : -((-off + (long long)esz - 1) / (long long)esz);
     a->touched_launch = C.id;
 
     if (off < 0 || (unsigned long long)off + esz > a->size) {
-        kdiag((rw & CUEMU_WRITE) ? KD_OOB_WRITE : KD_OOB_READ, a, name, file, line, ei, -1, b);
+        kdiag((rw & WCU_WRITE) ? KD_OOB_WRITE : KD_OOB_READ, a, name, file, line, ei, -1, b);
         rec_add(a->id, ei, rw | F_OOB);
         return scratch(esz);
     }
 
     int flags = rw | (atomic ? F_ATOMIC : 0);
-    if ((rw & CUEMU_READ) && !a->init[off]) {
+    if ((rw & WCU_READ) && !a->init[off]) {
         kdiag(KD_UNINIT_READ, a, name, file, line, ei, -1, b);
         flags |= F_UNINIT;
     }
@@ -1477,32 +1477,32 @@ void *cuemu_access(void *base, size_t esz, long long index, int rw, int type, co
     size_t ci = a->cells ? (size_t)off / a->gran : 0;
     if (a->cells && ci < a->ncells) {
         cell_t *c = &a->cells[ci];
-        int32_t t = (int32_t)cuemu_tls.thread_id;
+        int32_t t = (int32_t)wcu_tls.thread_id;
         if (c->stamp != (uint32_t)C.id) { c->stamp = (uint32_t)C.id; c->writer = -1; c->reader = -1; c->atomic = 0; }
         int raced = 0;
         int safe = atomic && (c->atomic || c->writer < 0);
         if (safe) {
             /* atomics are allowed to share an element */
-        } else if ((rw & CUEMU_WRITE) && c->writer >= 0 && c->writer != t) {
+        } else if ((rw & WCU_WRITE) && c->writer >= 0 && c->writer != t) {
             kdiag(KD_RACE_WRITE, a, name, file, line, ei, c->writer, b);
             raced = 1;
         } else if (c->writer >= 0 && c->writer != t) {
             kdiag(KD_RACE_READ, a, name, file, line, ei, c->writer, b);
             raced = 1;
-        } else if ((rw & CUEMU_WRITE) && (c->reader == -2 || (c->reader >= 0 && c->reader != t))) {
+        } else if ((rw & WCU_WRITE) && (c->reader == -2 || (c->reader >= 0 && c->reader != t))) {
             kdiag(KD_RACE_READ, a, name, file, line, ei, c->reader, b);
             raced = 1;
         }
         if (raced) flags |= F_RACE;
         if (atomic) c->atomic = 1;
-        if (rw & CUEMU_READ) c->reader = c->reader == -1 || c->reader == t ? t : -2;
-        if (rw & CUEMU_WRITE) {
+        if (rw & WCU_READ) c->reader = c->reader == -1 || c->reader == t ? t : -2;
+        if (rw & WCU_WRITE) {
             if (a->wr_launch != C.id) { a->wr_launch = C.id; a->wr_count = 0; a->wr_max = -1; }
             if (c->writer == -1) { a->wr_count++; if (ei > a->wr_max) a->wr_max = ei; }
             c->writer = t;
         }
     }
-    if (rw & CUEMU_WRITE) memset(a->init + off, 1, esz);
+    if (rw & WCU_WRITE) memset(a->init + off, 1, esz);
     rec_add(a->id, ei, flags);
     return a->data + off;
 }
@@ -1618,7 +1618,7 @@ static void flush_kernel_diags(void)
             snprintf(hint, sizeof hint, "%s",
                      d->kind == KD_RACE_WRITE
                          ? "On a GPU these threads run at the same time, so their updates overwrite each other and "
-                           "the result is unpredictable (cuemu ran them one by one, so your output may look right). "
+                           "the result is unpredictable (wcu ran them one by one, so your output may look right). "
                            "Give each thread its own output element (out[i]), or use atomicAdd(&sum[0], value), "
                            "which updates memory in one indivisible step. See examples/11_atomic_sum.cu."
                          : "The value a thread reads depends on whether its neighbour already ran, which varies from "
@@ -1680,11 +1680,11 @@ static void flush_kernel_diags(void)
     }
 }
 
-void cuemu_launch_end(cuemu_launch *L)
+void wcu_launch_end(wcu_launch *L)
 {
     if (L->ok) {
         if (L->next > 0) finish_thread();
-        cuemu_tls = (cuemu_tls_state){0};
+        wcu_tls = (wcu_tls_state){0};
         G.threads_run += C.total;
     }
     flush_kernel_diags();
@@ -1729,7 +1729,7 @@ void cuemu_launch_end(cuemu_launch *L)
     C.failed = 0;
     api_leave();
     if (G.strict && G.nerrors) {
-        fprintf(stderr, "\n%scuemu: stopping at the first error (CUEMU_STRICT is set)%s\n", DIM, RESET);
+        fprintf(stderr, "\n%swcu: stopping at the first error (WCU_STRICT is set)%s\n", DIM, RESET);
         exit(1);
     }
 }
@@ -1814,11 +1814,11 @@ static void crash_handler(int sig, siginfo_t *si, void *uctx)
     if (sig == SIGFPE) {
         code = "arithmetic-error";
         snprintf(title, sizeof title, "arithmetic error (integer division by zero?)%s%s%s",
-                 cuemu_tls.in_kernel ? " in kernel `" : "", cuemu_tls.in_kernel ? C.kernel : "", cuemu_tls.in_kernel ? "`" : "");
-    } else if (in_region(addr) && cuemu_tls.in_kernel) {
+                 wcu_tls.in_kernel ? " in kernel `" : "", wcu_tls.in_kernel ? C.kernel : "", wcu_tls.in_kernel ? "`" : "");
+    } else if (in_region(addr) && wcu_tls.in_kernel) {
         code = "untracked-device-access";
-        snprintf(title, sizeof title, "kernel `%s` reached device memory in a way cuemu cannot follow", C.kernel);
-        snprintf(hint, sizeof hint, "cuemu checks accesses written as p[i] and *p. Rewrite other pointer tricks "
+        snprintf(title, sizeof title, "kernel `%s` reached device memory in a way wcu cannot follow", C.kernel);
+        snprintf(hint, sizeof hint, "wcu checks accesses written as p[i] and *p. Rewrite other pointer tricks "
                                     "(p->field, *(p + i), memcpy) as p[i] or p[i].field.");
     } else if (in_region(addr) && G.in_api) {
         snprintf(title, sizeof title, "crash inside %s", G.in_api);
@@ -1841,7 +1841,7 @@ static void crash_handler(int sig, siginfo_t *si, void *uctx)
     } else if (addr < 65536) {
         code = "null-pointer";
         snprintf(title, sizeof title, "segmentation fault: NULL pointer dereference%s%s%s",
-                 cuemu_tls.in_kernel ? " in kernel `" : "", cuemu_tls.in_kernel ? C.kernel : "", cuemu_tls.in_kernel ? "`" : "");
+                 wcu_tls.in_kernel ? " in kernel `" : "", wcu_tls.in_kernel ? C.kernel : "", wcu_tls.in_kernel ? "`" : "");
         snprintf(hint, sizeof hint, "A pointer was NULL. Check the results of malloc and cudaMalloc.");
     } else {
         snprintf(title, sizeof title, "segmentation fault at address %p", (void *)addr);
@@ -1855,7 +1855,7 @@ static void crash_handler(int sig, siginfo_t *si, void *uctx)
         ev_close();
     }
     G.crashed = 1;
-    cuemu_tls.in_kernel = 0;
+    wcu_tls.in_kernel = 0;
     finalize();
     /* Exit instead of re-raising: the explanation above beats a bare "Segmentation fault". */
     fflush(NULL);
@@ -1867,12 +1867,12 @@ static void crash_handler(int sig, siginfo_t *si, void *uctx)
 static void write_trace(void)
 {
     if (!G.tracing) return;
-    const char *out = getenv("CUEMU_TRACE_OUT");
+    const char *out = getenv("WCU_TRACE_OUT");
     if (out && *out) snprintf(G.trace_path, sizeof G.trace_path, "%s", out);
-    else snprintf(G.trace_path, sizeof G.trace_path, "%s.cuemu.html", G.exe[0] ? G.exe : "cuemu");
+    else snprintf(G.trace_path, sizeof G.trace_path, "%s.wcu.html", G.exe[0] ? G.exe : "wcu");
 
-    const char *viewer = getenv("CUEMU_VIEWER");
-    if (!viewer || !*viewer) viewer = CUEMU_DEFAULT_VIEWER;
+    const char *viewer = getenv("WCU_VIEWER");
+    if (!viewer || !*viewer) viewer = WCU_DEFAULT_VIEWER;
     sbuf tpl = {0};
     FILE *vf = *viewer ? fopen(viewer, "rb") : NULL;
     if (vf) {
@@ -1881,7 +1881,7 @@ static void write_trace(void)
         while ((k = fread(chunk, 1, sizeof chunk, vf)) > 0) sb_putn(&tpl, chunk, k);
         fclose(vf);
     }
-    static const char marker[] = "\"__CUEMU_TRACE_JSON__\"";
+    static const char marker[] = "\"__WCU_TRACE_JSON__\"";
     size_t plen = strlen(G.trace_path);
     int want_json = plen > 5 && strcmp(G.trace_path + plen - 5, ".json") == 0;
     char *at = tpl.p && !want_json ? strstr(tpl.p, marker) : NULL;
@@ -1996,7 +1996,7 @@ static void finalize(void)
     fmt_bytes(G.peak, tot, sizeof tot);
     fmt_int(G.threads_run, thr, sizeof thr);
     double end = max_d(G.host_ms, G.busy_ms);
-    fprintf(stderr, "\n%s── cuemu run summary %s─────────────────────────────────────────%s\n", BOLD, DIM, RESET);
+    fprintf(stderr, "\n%s── wcu run summary %s─────────────────────────────────────────%s\n", BOLD, DIM, RESET);
     fprintf(stderr, "  %-10s %d launch%s, %s GPU threads\n", "kernels", G.nlaunches, G.nlaunches == 1 ? "" : "es", thr);
     fprintf(stderr, "  %-10s peak %s of device memory in %d allocation%s\n", "memory", tot, G.nallocs, G.nallocs == 1 ? "" : "s");
     fprintf(stderr, "  %-10s %.2f ms simulated: context %.0f · host→device %.3f · kernels %.3f · device→host %.3f\n",
@@ -2010,7 +2010,7 @@ static void finalize(void)
 static void at_exit(void)
 {
     finalize();
-    if (G.nerrors && !getenv("CUEMU_KEEP_EXIT_CODE")) {
+    if (G.nerrors && !getenv("WCU_KEEP_EXIT_CODE")) {
         fflush(NULL);
         _exit(1);
     }

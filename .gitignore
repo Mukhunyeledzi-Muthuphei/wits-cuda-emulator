@@ -1,6 +1,6 @@
 build/
-.cuemu/
-.cuemu-obj/
-*.cuemu.html
-*.cuemu.json
+.wcu/
+.wcu-obj/
+*.wcu.html
+*.wcu.json
 a.out

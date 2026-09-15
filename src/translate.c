@@ -1,16 +1,16 @@
 /*
- * cuemu-translate — turns a CUDA C source file (.cu) into plain C for cuemu.
+ * wcu-translate — turns a CUDA C source file (.cu) into plain C for wcu.
  *
  *   kernel<<<numBlocks, threadsPerBlock>>>(args);   ->  a loop over GPU threads
- *   a[i], *p, p->x   inside __global__/__device__   ->  CUEMU_AT(...) checked accesses
- *   dim3 b(16, 16);                                 ->  dim3 b = CUEMU_DIM3(16, 16);
+ *   a[i], *p, p->x   inside __global__/__device__   ->  WCU_AT(...) checked accesses
+ *   dim3 b(16, 16);                                 ->  dim3 b = WCU_DIM3(16, 16);
  *
  * It also rejects things nvcc would reject (calling host functions from a
  * kernel, calling a kernel without <<< >>>, threadIdx in host code) with
  * messages aimed at students. Line numbers are preserved, so compiler
  * errors point at the original .cu file.
  *
- * usage: cuemu-translate input.cu [-o output.c]
+ * usage: wcu-translate input.cu [-o output.c]
  */
 #include <ctype.h>
 #include <limits.h>
@@ -402,7 +402,7 @@ static int in_unevaluated(int si)
 static const char *access_mode(int first, int last)
 {
     int prev = first - 1;
-    if (is(prev, "&") && !prev_is_value_end(prev - 1)) return "CUEMU_ADDR";
+    if (is(prev, "&") && !prev_is_value_end(prev - 1)) return "WCU_ADDR";
     int prefix = (is(prev, "++") || is(prev, "--")) && !prev_is_value_end(prev - 1);
     int k = last + 1;
     for (;;) {
@@ -411,9 +411,9 @@ static const char *access_mode(int first, int last)
         break;
     }
     static const char *const compound[] = { "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", NULL };
-    if (prefix || in_list(k, compound) || is(k, "++") || is(k, "--")) return "CUEMU_RW";
-    if (is(k, "=")) return "CUEMU_WRITE";
-    return "CUEMU_READ";
+    if (prefix || in_list(k, compound) || is(k, "++") || is(k, "--")) return "WCU_RW";
+    if (is(k, "=")) return "WCU_WRITE";
+    return "WCU_READ";
 }
 
 /* ---- Emission ---------------------------------------------------------------------------- */
@@ -498,7 +498,7 @@ static int rewrite_launch(int i, int to)
 
     int cfg[8], ncfg = split_commas(i + 2, gt, cfg, 8);
     if (ncfg != 2) {
-        error_at(i + 1, ncfg > 2 ? "cuemu supports only <<<numBlocks, threadsPerBlock>>> (no stream or shared-memory size)"
+        error_at(i + 1, ncfg > 2 ? "wcu supports only <<<numBlocks, threadsPerBlock>>> (no stream or shared-memory size)"
                                  : "a launch needs two values: kernel<<<numBlocks, threadsPerBlock>>>");
         return 0;
     }
@@ -509,23 +509,23 @@ static int rewrite_launch(int i, int to)
     puts_("do { ");
     for (int a = 0; a < nargs; a++) {
         int end = a + 1 < nargs ? args[a + 1] - 1 : close;
-        printf_("__auto_type _cuemu_a%d = (", a);
+        printf_("__auto_type _wcu_a%d = (", a);
         emit_range(args[a], end);
         puts_("); ");
     }
-    printf_("cuemu_launch _cuemu_L; if (cuemu_launch_begin(&_cuemu_L, \"%s\", CUEMU_TO_DIM3(", name);
+    printf_("wcu_launch _wcu_L; if (wcu_launch_begin(&_wcu_L, \"%s\", WCU_TO_DIM3(", name);
     emit_range(cfg[0], cfg[1] - 1);
-    puts_("), CUEMU_TO_DIM3(");
+    puts_("), WCU_TO_DIM3(");
     emit_range(cfg[1], gt);
-    printf_("), __FILE__, %d)) { while (cuemu_launch_next(&_cuemu_L)) %s(", st(i)->line, name);
-    for (int a = 0; a < nargs; a++) printf_("%s_cuemu_a%d", a ? ", " : "", a);
-    puts_("); } cuemu_launch_end(&_cuemu_L); } while (0)");
+    printf_("), __FILE__, %d)) { while (wcu_launch_next(&_wcu_L)) %s(", st(i)->line, name);
+    for (int a = 0; a < nargs; a++) printf_("%s_wcu_a%d", a ? ", " : "", a);
+    puts_("); } wcu_launch_end(&_wcu_L); } while (0)");
     return finish_rewrite(start, i, close);
 }
 
 static int rewrite_dim3_decl(int i, int to)
 {
-    /* dim3 a(16, 16), b;  ->  dim3 a = CUEMU_DIM3(16, 16), b = {1, 1, 1}; */
+    /* dim3 a(16, 16), b;  ->  dim3 a = WCU_DIM3(16, 16), b = {1, 1, 1}; */
     size_t start = out.n;
     put_tok(i);
     trivia(i);
@@ -533,7 +533,7 @@ static int rewrite_dim3_decl(int i, int to)
     while (k < to && kind(k) == T_IDENT) {
         put_tok(k);
         if (is(k + 1, "(") && mt[k + 1] > 0) {
-            puts_(" = CUEMU_DIM3(");
+            puts_(" = WCU_DIM3(");
             emit_inner(k + 1);
             puts_(")");
             k = mt[k + 1] + 1;
@@ -548,7 +548,7 @@ static int rewrite_dim3_decl(int i, int to)
             }
             puts_(" = ");
             if (is(k + 2, "{")) emit_range(k + 2, e);
-            else { puts_("CUEMU_TO_DIM3("); emit_range(k + 2, e); puts_(")"); }
+            else { puts_("WCU_TO_DIM3("); emit_range(k + 2, e); puts_(")"); }
             k = e;
         } else {
             break;
@@ -572,14 +572,14 @@ static int try_rewrite(int i, int to)
     int r = region[i];
 
     if (is(i, "__shared__")) {
-        error_at(i, "shared memory (__shared__) is not supported by cuemu yet");
+        error_at(i, "shared memory (__shared__) is not supported by wcu yet");
         return 0;
     }
 
     if (r && owner[i] >= 0 && F[owner[i]].open_si == i && (F[owner[i]].flags & FN_GLOBAL)) {
         func *f = &F[owner[i]];
         put_tok(i);
-        printf_(" cuemu_kernel_enter(__builtin_frame_address(0), \"%s\", %d, %d);", f->name, st(f->start_si)->line,
+        printf_(" wcu_kernel_enter(__builtin_frame_address(0), \"%s\", %d, %d);", f->name, st(f->start_si)->line,
                 st(f->close_si)->line);
         trivia(i);
         return i + 1;
@@ -593,7 +593,7 @@ static int try_rewrite(int i, int to)
     /* dim3 constructors */
     if (is(i, "dim3") && !after_member) {
         if (is(i + 1, "(")) {
-            puts_("CUEMU_DIM3");
+            puts_("WCU_DIM3");
             trivia(i);
             return i + 1;
         }
@@ -639,7 +639,7 @@ static int try_rewrite(int i, int to)
             int close = mt[i + 1];
             const char *mode = access_mode(i, close);
             size_t start = out.n;
-            puts_("CUEMU_AT(");
+            puts_("WCU_AT(");
             put_tok(i);
             puts_(", (");
             emit_inner(i + 1);
@@ -651,7 +651,7 @@ static int try_rewrite(int i, int to)
         if (r == 2 && is(i + 1, "->") && kind(i + 2) == T_IDENT && !in_unevaluated(i)) {
             const char *mode = access_mode(i, i);
             size_t start = out.n;
-            printf_("CUEMU_AT(%s, 0, %s).", name, mode);
+            printf_("WCU_AT(%s, 0, %s).", name, mode);
             return finish_rewrite(start, i, i + 1);
         }
     }
@@ -663,7 +663,7 @@ static int try_rewrite(int i, int to)
         if (kind(i + 1) == T_IDENT && !is_keyword(i + 1) && !in_list(i + 2, blocked)) {
             const char *mode = access_mode(i, i + 1);
             size_t start = out.n;
-            puts_("CUEMU_AT(");
+            puts_("WCU_AT(");
             put_tok(i + 1);
             printf_(", 0, %s)", mode);
             return finish_rewrite(start, i, i + 1);
@@ -674,7 +674,7 @@ static int try_rewrite(int i, int to)
             if (kind(n) != T_IDENT && kind(n) != T_NUM && !in_list(n, blocked) && !is(n, "*") && !is(n, "&")) {
                 const char *mode = access_mode(i, close);
                 size_t start = out.n;
-                puts_("CUEMU_AT((");
+                puts_("WCU_AT((");
                 emit_inner(i + 1);
                 printf_("), 0, %s)", mode);
                 return finish_rewrite(start, i, close);
@@ -705,9 +705,9 @@ int main(int argc, char **argv)
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) output = argv[++i];
         else if (!path) path = argv[i];
-        else { fprintf(stderr, "usage: cuemu-translate input.cu [-o output.c]\n"); return 2; }
+        else { fprintf(stderr, "usage: wcu-translate input.cu [-o output.c]\n"); return 2; }
     }
-    if (!path) { fprintf(stderr, "usage: cuemu-translate input.cu [-o output.c]\n"); return 2; }
+    if (!path) { fprintf(stderr, "usage: wcu-translate input.cu [-o output.c]\n"); return 2; }
     color = isatty(2) && !getenv("NO_COLOR");
 
     FILE *f = fopen(path, "rb");
@@ -729,7 +729,7 @@ int main(int argc, char **argv)
     match_brackets();
     scan_file_scope();
 
-    puts_("/* Generated by cuemu-translate. Edit the .cu file instead. */\n#include \"cuemu.h\"\n#line 1 \"");
+    puts_("/* Generated by wcu-translate. Edit the .cu file instead. */\n#include \"wcu.h\"\n#line 1 \"");
     for (const char *p = abspath; *p; p++) {
         if (*p == '"' || *p == '\\') puts_("\\");
         put(p, 1);
@@ -739,7 +739,7 @@ int main(int argc, char **argv)
     emit_range(0, ns);
 
     if (nerr) {
-        fprintf(stderr, "cuemu-translate: %d error%s in %s\n", nerr, nerr == 1 ? "" : "s", path);
+        fprintf(stderr, "wcu-translate: %d error%s in %s\n", nerr, nerr == 1 ? "" : "s", path);
         return 1;
     }
     FILE *o = output ? fopen(output, "wb") : stdout;

@@ -1,6 +1,6 @@
-# cuemu — learn CUDA on a laptop with no GPU
+# WCU — the Wits CUDA emulator
 
-cuemu runs CUDA C programs on the CPU. It is not fast, and it is not meant to be: it exists so
+WCU (command: `wcu`) runs CUDA C programs on the CPU. It is not fast, and it is not meant to be: it exists so
 that the ideas of CUDA — blocks and threads, separate host and device memory, copies across a
 slow link, races between threads that run at the same time — can be learned, seen and debugged
 on any Mac or Linux machine.
@@ -12,11 +12,11 @@ It does three things a real GPU does not:
    GPU thread that did it, the array involved and what to do about it.
 2. **Draws the run.** Every program writes a self-contained HTML page: a timeline, the grid of
    blocks and threads, which thread touched which element of which array, with the values.
-3. **Simulates GPU time.** Real timings on your CPU would teach the wrong lessons, so cuemu
+3. **Simulates GPU time.** Real timings on your CPU would teach the wrong lessons, so wcu
    models the costs a GPU actually has (start-up, copies over PCIe, parallel execution) and
    reports those instead.
 
-Code written for cuemu is ordinary CUDA C: `__global__`, `<<<blocks, threads>>>`, `cudaMalloc`,
+Code written for WCU is ordinary CUDA C: `__global__`, `<<<blocks, threads>>>`, `cudaMalloc`,
 `cudaMemcpy`, `threadIdx`. It is meant to move to real hardware unchanged.
 
 ## Getting started
@@ -25,28 +25,30 @@ Requirements: macOS or Linux, `clang` and `make` (on a Mac, `xcode-select --inst
 
 ```sh
 make                                          # builds the translator and runtime
-bin/cuemu run --open examples/01_vector_add.cu
+bin/wcu run --open examples/01_vector_add.cu
 ```
 
 `--open` opens the visualization in your browser; without it, the path is printed at the end.
-Add `bin` to your `PATH` to use `cuemu` (and the `nvcc` stand-in) from anywhere.
+The page opens with the sidebar and the run summary collapsed: the ☰ button and the summary bar
+expand them, and the ◀ ▶ buttons step through the run without opening anything.
+Add `bin` to your `PATH` to use `wcu` (and the `nvcc` stand-in) from anywhere.
 
 ```
-cuemu run [--open] file.cu [-- program arguments]
-cuemu build file.cu [more files] [-o program] [compiler flags]
-cuemu translate file.cu            # show the plain C that cuemu generates
+wcu run [--open] file.cu [-- program arguments]
+wcu build file.cu [more files] [-o program] [compiler flags]
+wcu translate file.cu            # show the plain C that wcu generates
 ```
 
 Environment variables:
 
 | Variable | Meaning |
 | --- | --- |
-| `CUEMU_ORDER=sequential` | run GPU threads in order (default: shuffled, like real hardware) |
-| `CUEMU_STRICT=1` | stop at the first error |
-| `CUEMU_DEVICE_MB=512` | size of the simulated device memory (default 4096) |
-| `CUEMU_SEED=n` | change the thread shuffle |
-| `CUEMU_TRACE=0` | skip writing the visualization |
-| `CUEMU_TRACE_OUT=path` | write the visualization somewhere else (`.json` writes raw trace data) |
+| `WCU_ORDER=sequential` | run GPU threads in order (default: shuffled, like real hardware) |
+| `WCU_STRICT=1` | stop at the first error |
+| `WCU_DEVICE_MB=512` | size of the simulated device memory (default 4096) |
+| `WCU_SEED=n` | change the thread shuffle |
+| `WCU_TRACE=0` | skip writing the visualization |
+| `WCU_TRACE_OUT=path` | write the visualization somewhere else (`.json` writes raw trace data) |
 
 ## The examples
 
@@ -66,7 +68,7 @@ Each one is a small, complete program. The numbered bugs are the mistakes studen
 | `10_host_function_in_kernel.cu` | mistakes caught before the program runs |
 | `11_atomic_sum.cu` | the fix for 05, using `atomicAdd` |
 
-## What cuemu checks
+## What WCU checks
 
 Reported while the program runs, with source line and thread:
 
@@ -86,14 +88,14 @@ A program with errors exits with status 1, so assignments can be graded by runni
 ## How it works
 
 ```
-your.cu ──cuemu-translate──► plain C ──clang──► program ──links──► libcuemu.a
+your.cu ──wcu-translate──► plain C ──clang──► program ──links──► libwcu.a
 ```
 
 - **`src/translate.c`** rewrites CUDA syntax into C: `<<< >>>` becomes a loop over GPU threads,
   and every `a[i]`, `*p` and `p->x` inside `__global__`/`__device__` code becomes a checked
   access. Line numbers are preserved, so compiler errors point into your `.cu` file.
 - **`src/runtime.c`** is the emulated GPU. Device memory lives at addresses inside a reserved,
-  unreadable region, so the CPU touching a device pointer faults and cuemu can explain it; the
+  unreadable region, so the CPU touching a device pointer faults and wcu can explain it; the
   real bytes sit in ordinary buffers that only kernels reach, through the checked accesses. The
   runtime tracks, per byte, whether anything ever wrote it, and, per element per launch, which
   thread read or wrote it — that is where race and uninitialized-read detection come from.
@@ -149,5 +151,5 @@ Not supported yet:
   keep working (structs, `->`, local arrays, `__device__` helpers, 3D launches, macros).
 - To add a new check, add a diagnostic in `src/runtime.c` (see `report()` and `flush_kernel_diags()`)
   and an expectation in `tests/expected.txt`.
-- Student work can be graded by exit status, and the `.cuemu.html` page attached to feedback:
+- Student work can be graded by exit status, and the `.wcu.html` page attached to feedback:
   it is one self-contained file that opens offline.
