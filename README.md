@@ -29,8 +29,8 @@ bin/wcu run --open examples/01_vector_add.cu
 ```
 
 `--open` opens the visualization in your browser; without it, the path is printed at the end.
-The page opens with the sidebar and the run summary collapsed: the ☰ button and the summary bar
-expand them, and the ◀ ▶ buttons step through the run without opening anything.
+The page has a sidebar with the run status, the timeline, the list of steps and the problems
+found; the ◀ ▶ buttons above the detail panel step through the run.
 Add `bin` to your `PATH` to use `wcu` (and the `nvcc` stand-in) from anywhere.
 
 ```
