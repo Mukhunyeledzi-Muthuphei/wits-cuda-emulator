@@ -54,7 +54,7 @@ for (const file of traces) {
   global.clearInterval = () => {};
 
   const script = body.replace('"__WCU_TRACE_JSON__"', fs.readFileSync(file, 'utf8'))
-    + '\n;globalThis.__t = { select, threadCard, coalescingCard, warpOf, analyze, T: () => T, state: () => state };';
+    + '\n;globalThis.__t = { select, setThread, threadCard, coalescingCard, warpOf, analyze, T: () => T, state: () => state };';
   const name = file.split('/').pop();
   try {
     (0, eval)(script);
@@ -72,6 +72,15 @@ for (const file of traces) {
         if (!t.coalescingCard(ev, an).textContent.includes(want))
           throw new Error('warp view does not follow thread ' + th + ' (expected "' + want + '")');
       }
+      t.state().thread = null;
+
+      /* hovering must keep working when the open tab does not hold those cards */
+      const realGet = global.document.getElementById;
+      global.document.getElementById = id => (id === 'app' ? app : null);
+      const probe = [...an.perThread.keys()][0];
+      t.setThread(probe);
+      global.document.getElementById = realGet;
+      if (t.state().thread !== probe) throw new Error('hover stops working once a card is off screen');
       t.state().thread = null;
     }
 

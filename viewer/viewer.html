@@ -141,7 +141,25 @@ label.toggle { display: flex; gap: 6px; align-items: center; margin-top: 8px; co
 .prob .title { font-size: 12.5px; }
 
 /* detail */
-#detail { padding: 18px 22px 60px; min-width: 0; }
+#detail { min-width: 0; padding: 0; display: flex; flex-direction: column; }
+#detail > div { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.primary { flex: 1; overflow-y: auto; padding: 18px 22px 24px; min-height: 0; }
+.bottom { display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--panel); min-height: 90px; }
+.grabber { height: 6px; margin-top: -6px; cursor: row-resize; }
+.grabber:hover { background: var(--accent-soft); }
+.tabbar { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tab {
+  padding: 7px 12px; font-size: 12px; white-space: nowrap; cursor: pointer;
+  color: var(--ink-2); border-bottom: 2px solid transparent;
+}
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+.tabbody { flex: 1; overflow-y: auto; padding: 14px 18px 24px; min-height: 0; }
+.tabbody .card { border: none; background: transparent; padding: 0; margin-bottom: 18px; }
+@media (max-width: 860px) {
+  .primary, .tabbody { overflow: visible; }
+  .bottom { height: auto !important; }
+}
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
 .card > h3 { font-size: 13px; margin-bottom: 4px; }
 .sub { color: var(--ink-2); font-size: 12.5px; }
@@ -162,6 +180,7 @@ label.toggle { display: flex; gap: 6px; align-items: center; margin-top: 8px; co
 .th.pending { opacity: .18; }
 .th.warpstart { box-shadow: inset 2px 0 0 var(--ink-2); }
 .th.warphl { outline: 1px solid var(--ink-2); outline-offset: 0; }
+.th.pin { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 2; position: relative; }
 .th.unrec { background: repeating-linear-gradient(45deg, var(--idle), var(--idle) 2px, transparent 2px, transparent 4px); }
 .th.hl { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 2; position: relative; }
 .big .th { width: 13px; height: 13px; }
@@ -351,10 +370,21 @@ function threadClass(list) {
 }
 
 /* ---------- rendering ---------- */
+const SCROLLERS = ['aside', '#detail .primary', '#detail .tabbody'];
+
 function render() {
   const app = document.getElementById('app');
+  const keep = SCROLLERS.map(sel => {
+    const n = document.querySelector(sel);
+    return n ? n.scrollTop : null;
+  });
   app.textContent = '';
   app.append(renderMain());
+  SCROLLERS.forEach((sel, i) => {
+    const n = document.querySelector(sel);
+    if (n && keep[i]) n.scrollTop = keep[i];
+  });
+  applyHighlights();
 }
 
 function renderMain() {
@@ -483,30 +513,95 @@ function renderProblems() {
 function select(i, diag) {
   state.sel = Math.min(Math.max(i, 0), T.events.length - 1);
   state.thread = null;
+  state.pinned = null;
+  state.tab = diag ? 'Problems' : null;   /* arriving from the problem list opens it */
   state.focusDiag = diag || null;
   state.play = null;
   render();
-  const d = document.getElementById('detail');
-  if (d) d.scrollTop = 0;
+  for (const sel of ['#detail .primary', '#detail .tabbody']) {
+    const n = document.querySelector(sel);
+    if (n) n.scrollTop = 0;
+  }
 }
 
 /* ---------- detail panels ---------- */
+let currentTabs = [];
+
 function renderDetail() {
   const box = el('div');
   const e = T.events[state.sel];
   if (!e) return box;
-  switch (e.type) {
-    case 'launch': box.append(...launchPanels(e)); break;
-    case 'memcpy': box.append(copyPanel(e)); break;
-    case 'malloc': case 'free': case 'memset': box.append(memPanel(e)); break;
-    case 'context': box.append(contextPanel()); break;
-    case 'sync': box.append(syncPanel(e)); break;
-    case 'crash': box.append(crashPanel(e)); break;
-  }
   const diags = T.diagnostics.filter(d => d.event === state.sel);
-  for (const d of diags) box.append(diagCard(d));
-  if (e.file) box.append(sourceCard(e, diags));
+  const primary = el('div', 'primary');
+  const tabs = [];
+
+  if (e.type === 'launch') {
+    const p = launchPanels(e);
+    primary.append(p[0]);
+    if (p[1]) primary.append(p[1]);                       /* the thread grid stays on top */
+    if (p[2]) tabs.push({ name: 'Thread', node: p[2] });
+    if (p[3]) tabs.push({ name: 'Warp memory', node: p[3] });
+    if (p[4]) tabs.push({ name: 'Device memory', node: p[4] });
+  } else {
+    const panel = e.type === 'memcpy' ? copyPanel(e)
+      : e.type === 'malloc' || e.type === 'free' || e.type === 'memset' ? memPanel(e)
+      : e.type === 'context' ? contextPanel()
+      : e.type === 'sync' ? syncPanel(e)
+      : e.type === 'crash' ? crashPanel(e) : el('div');
+    primary.append(panel);
+  }
+
+  const probs = el('div');
+  if (diags.length) for (const d of diags) probs.append(diagCard(d));
+  else probs.append(el('div', 'sub', 'Nothing was reported on this step.'));
+  tabs.push({ name: diags.length ? 'Problems (' + diags.length + ')' : 'Problems', node: probs });
+  if (e.file) tabs.push({ name: 'Source', node: sourceCard(e, diags) });
+
+  currentTabs = tabs;
+  box.append(primary, renderBottom(tabs));
   return box;
+}
+
+function setTab(name) {
+  state.tab = name;
+  const old = document.querySelector('#detail .bottom');
+  if (!old) { render(); return; }
+  old.replaceWith(renderBottom(currentTabs));   /* the primary view keeps its scroll */
+  applyHighlights();
+}
+
+/* A VS Code-style panel: tab strip, one view at a time, draggable top edge. */
+function renderBottom(tabs) {
+  const bottom = el('div', 'bottom');
+  bottom.style.height = (state.bottomH || 320) + 'px';
+  const grab = el('div', 'grabber');
+  grab.title = 'drag to resize';
+  grab.onmousedown = ev => {
+    const startY = ev.clientY, startH = state.bottomH || 320;
+    const move = m => {
+      state.bottomH = Math.max(90, Math.min(startH + (startY - m.clientY), window.innerHeight - 180));
+      bottom.style.height = state.bottomH + 'px';
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+    ev.preventDefault();
+  };
+  const bar = el('div', 'tabbar');
+  let active = tabs.findIndex(t => t.name.split(' (')[0] === state.tab);
+  if (active < 0) active = 0;
+  tabs.forEach((t, i) => {
+    const tab = el('div', 'tab' + (i === active ? ' active' : ''), t.name);
+    tab.onclick = () => setTab(t.name.split(' (')[0]);
+    bar.append(tab);
+  });
+  const body = el('div', 'tabbody');
+  if (tabs[active]) body.append(tabs[active].node);
+  bottom.append(grab, bar, body);
+  return bottom;
 }
 
 function diagCard(d) {
@@ -629,14 +724,15 @@ function launchPanels(e) {
       + ', its lanes back to back, so anything that depends on the order of warps shows up as a data race and '
       + 'printf output comes out jumbled, as it does on real hardware.'));
   }
-  out.push(head);
+  out.push(head);   /* [0] header */
   if (e.ok === false) return out;
 
   /* thread grid */
   const grid = el('div', 'card');
   grid.append(el('h3', null, 'GPU threads'), el('div', 'sub',
     'Each square is one GPU thread and each box is one block; every ' + warpSize(e)
-    + ' threads (one warp) start at a marked square. Hover a thread to see what it did.'));
+    + ' threads (one warp) start at a marked square. Hover a thread to see what it did, '
+    + 'and click it to keep it while you scroll.'));
   const blocks = el('div', 'blocks');
   const nblocks = gx * gy * gz, per = bx * by * bz;
   const zoomed = state.zoomBlock != null && nblocks * per > 8192;
@@ -660,7 +756,15 @@ function launchPanels(e) {
         cell.title = 'thread ' + gid + ' · warp ' + warpOf(e, gid) + ', lane ' + (t % ws);
         th.append(cell);
       }
-      th.onmouseover = ev => { if (ev.target.dataset.t) setThread(+ev.target.dataset.t); };
+      th.onmouseover = ev => {
+        if (state.pinned == null && ev.target.dataset.t) setThread(+ev.target.dataset.t);
+      };
+      th.onclick = ev => {
+        if (!ev.target.dataset.t) return;
+        const t = +ev.target.dataset.t;
+        state.pinned = state.pinned === t ? null : t;   /* click again to release it */
+        setThread(t);
+      };
       box.append(th);
     } else {
       /* Too many threads to draw: colour the block by the worst thing that happened in it. */
@@ -707,11 +811,10 @@ function launchPanels(e) {
   }
   grid.append(legend);
   grid.append(playRow(e, a));
-  out.push(grid);
+  out.push(grid);   /* [1] the thread grid */
 
-  /* selected thread */
+  /* [2] thread, [3] warp memory */
   out.push(threadCard(e, a));
-
   out.push(coalescingCard(e, a));
 
   /* memory */
@@ -723,7 +826,7 @@ function launchPanels(e) {
     const al = allocs.get(id);
     if (al) mem.append(memoryStrip(al, a.snaps.get(id), a, e));
   }
-  out.push(mem);
+  out.push(mem);    /* [4] device memory */
   return out;
 }
 
@@ -807,6 +910,7 @@ function playRow(e, a) {
   const row = el('div', 'row');
   if (!e.order || !e.order.length) return row;
   const btn = el('button', null, state.play ? '■ stop' : '▶ run the warps one by one');
+  btn.id = 'playbtn';
   btn.onclick = () => {
     if (state.play) { stopPlay(); return; }
     startPlay(e, a);
@@ -867,31 +971,44 @@ function startPlay(e, a) {
       playTimer = null;
       state.play = null;
       if (info) info.textContent = 'all ' + fmtInt(groups.length) + ' warps have run';
+      const b = document.getElementById('playbtn');
+      if (b) b.textContent = '▶ run the warps again';
     }
   }, 16);
 }
 
 function setThread(t) {
   state.thread = t;
+  const e = T.events[state.sel];
+  if (!e || e.type !== 'launch') return;
+  const a = analyze(e);
+  /* Only the cards on the open tab exist; update whichever are there. */
   const card = document.getElementById('threadcard');
-  if (!card) return;
-  const e = T.events[state.sel], a = analyze(e);
-  card.replaceWith(threadCard(e, a));
+  if (card) card.replaceWith(threadCard(e, a));
   const coal = document.getElementById('coalcard');
   if (coal) coal.replaceWith(coalescingCard(e, a));
+  applyHighlights();
+}
 
-  document.querySelectorAll('#detail .hl, #detail .warphl').forEach(c => {
+/* Outlines live in the DOM, so re-apply them whenever the panel is rebuilt. */
+function applyHighlights() {
+  const t = state.thread;
+  document.querySelectorAll('#detail .hl, #detail .warphl, #detail .pin').forEach(c => {
     c.classList.remove('hl');
     c.classList.remove('warphl');
+    c.classList.remove('pin');
   });
+  if (t == null) return;
+  const e = T.events[state.sel];
+  if (!e || e.type !== 'launch') return;
   const cell = document.querySelector('#detail .th[data-t="' + t + '"]');
-  if (cell) cell.classList.add('hl');
+  if (cell) cell.classList.add(state.pinned === t ? 'pin' : 'hl');
   /* outline the whole warp, so the grid and the warp view read as the same thing */
   const warp = warpOf(e, t);
   document.querySelectorAll('#detail .th[data-t]').forEach(c => {
     if (warpOf(e, +c.dataset.t) === warp && +c.dataset.t !== t) c.classList.add('warphl');
   });
-  for (const acc of a.perThread.get(t) || []) {
+  for (const acc of analyze(e).perThread.get(t) || []) {
     const c = document.querySelector('#detail .cell[data-key="' + acc.a + ':' + acc.idx + '"]');
     if (c) c.classList.add('hl');
   }
@@ -904,12 +1021,14 @@ function threadCard(e, a) {
   if (t == null) {
     c.append(el('h3', null, 'One GPU thread'), el('div', 'sub',
       'Hover a thread above to see its indexes, the arithmetic that turns them into an array position, '
-      + 'and the memory it touched.'));
+      + 'and the memory it touched. Click one to keep it on screen while you scroll.'));
     return c;
   }
   const p = threadPos(e, t);
   const [bx, by, bz] = e.block;
-  c.append(el('h3', null, 'GPU thread #' + fmtInt(t)));
+  c.append(el('h3', null, 'GPU thread #' + fmtInt(t)), el('div', 'sub', state.pinned === t
+    ? 'Pinned — hovering will not change it. Click the square again to release it.'
+    : 'Following the cursor. Click a thread to pin it.'));
   const kv = el('div', 'kv');
   kv.append(kvItem('blockIdx', '(' + p.block.join(', ') + ')'), kvItem('threadIdx', '(' + p.thread.join(', ') + ')'),
     kvItem('blockDim', '(' + e.block.join(', ') + ')'), kvItem('gridDim', '(' + e.grid.join(', ') + ')'),
@@ -1033,7 +1152,8 @@ function boot(trace) {
   const firstProblem = T.diagnostics.length ? T.diagnostics[0].event : -1;
   state = {
     sel: firstProblem >= 0 ? firstProblem : firstLaunch >= 0 ? firstLaunch : 0,
-    thread: null, showInit: false, zoomBlock: null, play: null,
+    thread: null, pinned: null, showInit: false, zoomBlock: null, play: null,
+    tab: firstProblem >= 0 ? 'Problems' : null, bottomH: 320,
   };
   render();
 }
