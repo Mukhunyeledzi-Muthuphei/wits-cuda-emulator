@@ -161,6 +161,7 @@ label.toggle { display: flex; gap: 6px; align-items: center; margin-top: 8px; co
 .th.err { background: var(--err); }
 .th.pending { opacity: .18; }
 .th.warpstart { box-shadow: inset 2px 0 0 var(--ink-2); }
+.th.warphl { outline: 1px solid var(--ink-2); outline-offset: 0; }
 .th.unrec { background: repeating-linear-gradient(45deg, var(--idle), var(--idle) 2px, transparent 2px, transparent 4px); }
 .th.hl { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 2; position: relative; }
 .big .th { width: 13px; height: 13px; }
@@ -711,8 +712,7 @@ function launchPanels(e) {
   /* selected thread */
   out.push(threadCard(e, a));
 
-  const coal = coalescingCard(e, a);
-  if (coal) out.push(coal);
+  out.push(coalescingCard(e, a));
 
   /* memory */
   const mem = el('div', 'card');
@@ -727,64 +727,79 @@ function launchPanels(e) {
   return out;
 }
 
-/* What the warps did to memory: one 128-byte transaction shared, or one each. */
+/* What one warp did to memory: a transaction shared by its lanes, or one each.
+ * Follows whichever thread is hovered in the grid above. */
+const TXN_COLOURS = ['#3b5bdb', '#0b7285', '#7048e8', '#e8590c', '#0ca678', '#9c36b5', '#1971c2', '#c2255c'];
+
 function coalescingCard(e, a) {
   const sites = (e.sites || []).filter(s => s.alloc > 0 && s.warps > 0);
-  if (!sites.length) return null;
   const c = el('div', 'card');
+  c.id = 'coalcard';
+  if (!sites.length) return c;
   const txnBytes = (T.model && T.model.txnBytes) || 128;
-  const w = warpSize(e);
-  c.append(el('h3', null, 'How the warps read memory'), el('div', 'sub',
-    'A warp is ' + w + ' threads that run together and fetch memory in ' + txnBytes
-    + '-byte transactions. Neighbouring threads reading neighbouring elements share a transaction; '
-    + 'scattered threads each need their own.'));
+  const ws = warpSize(e);
+
+  /* which warp to show: the hovered thread's, else the first one with records */
+  let focus = state.thread != null ? warpOf(e, state.thread) : null;
+  const has = w => [...a.byWarp.values()].some(g => g.warp === w);
+  if (focus == null || !has(focus)) {
+    const first = [...a.byWarp.values()][0];
+    focus = first ? first.warp : 0;
+  }
+
+  c.append(el('h3', null, 'How warp ' + fmtInt(focus) + ' read memory'), el('div', 'sub',
+    'A warp is ' + ws + ' threads that run together and fetch memory in ' + txnBytes
+    + '-byte transactions. Each row below is this warp\'s ' + ws + ' lanes in order; the number is the '
+    + 'element that lane touched, and the colour is the transaction it needs. '
+    + (state.thread != null ? 'Hover another thread above to follow its warp.'
+                            : 'Hover a thread in the grid above to follow its warp.')));
 
   for (const site of sites) {
     const al = allocs.get(site.alloc);
-    const per = site.txn / site.warps, ideal = Math.max(site.ideal / site.warps, 1);
-    const ratio = site.txn / Math.max(site.ideal, 1);
+    const avg = site.txn / site.warps;
+    const group = [...a.byWarp.values()].find(g => g.warp === focus && g.line === site.line && g.alloc === site.alloc);
     const row = el('div', 'strip');
     const hdr = el('div', 'hdr');
     hdr.append(el('span', null, (al ? al.name : 'memory') + '  ·  line ' + site.line),
-      el('span', null, per.toFixed(1) + ' transaction' + (per === 1 ? '' : 's') + ' per warp'
-        + (ratio > 1.5 ? '  ·  ' + ratio.toFixed(0) + '× the ideal traffic' : '  ·  coalesced')));
+      el('span', null, 'launch average: ' + avg.toFixed(1) + ' transaction' + (avg === 1 ? '' : 's') + ' per warp'));
     row.append(hdr);
 
-    /* one real warp from the trace, lane by lane */
-    let sample = null;
-    for (const g of a.byWarp.values())
-      if (g.line === site.line && g.alloc === site.alloc && (!sample || g.lanes.length > sample.lanes.length)) {
-        sample = g;
-        if (sample.lanes.length >= w) break;
-      }
-    if (sample && al) {
-      const es = al.elemSize || 1;
-      const segs = new Map();
-      for (const l of sample.lanes) {
-        const seg = Math.floor(l.idx * es / txnBytes);
-        if (!segs.has(seg)) segs.set(seg, segs.size);
-      }
-      const lanes = el('div', 'cells');
-      for (const l of sample.lanes.sort((x, y) => x.lane - y.lane)) {
-        const seg = Math.floor(l.idx * es / txnBytes);
-        const cell = el('div', 'cell wide');
-        cell.textContent = fmtInt(l.idx);
-        cell.title = 'lane ' + l.lane + ' reads ' + al.name + '[' + fmtInt(l.idx) + '], '
-          + txnBytes + '-byte transaction #' + seg;
-        cell.style.background = 'hsl(' + (segs.get(seg) * 67 % 360) + ' 55% 48%)';
-        lanes.append(cell);
-      }
-      row.append(lanes);
-      row.append(el('div', 'sub', 'warp ' + fmtInt(sample.warp) + ': ' + sample.lanes.length
-        + ' lanes → ' + segs.size + ' transaction' + (segs.size === 1 ? '' : 's')
-        + (segs.size === 1 ? ' (one fetch serves the whole warp)' : ', one colour each')));
+    if (!group || !al) {
+      row.append(el('div', 'sub', 'this warp did not touch it here'));
+      c.append(row);
+      continue;
     }
+    const es = al.elemSize || 1;
+    const segs = new Map();
+    const lanes = group.lanes.slice().sort((x, y) => x.lane - y.lane);
+    for (const l of lanes) {
+      const seg = Math.floor(l.idx * es / txnBytes);
+      if (!segs.has(seg)) segs.set(seg, segs.size);
+    }
+    const strip = el('div', 'cells');
+    for (const l of lanes) {
+      const seg = Math.floor(l.idx * es / txnBytes);
+      const cell = el('div', 'cell wide');
+      cell.textContent = fmtInt(l.idx);
+      cell.dataset.key = site.alloc + ':' + l.idx;
+      cell.title = 'lane ' + l.lane + ' (thread ' + fmtInt(l.thread) + ') touches ' + al.name + '['
+        + fmtInt(l.idx) + '] — transaction #' + seg;
+      cell.style.background = TXN_COLOURS[segs.get(seg) % TXN_COLOURS.length];
+      if (state.thread === l.thread) cell.classList.add('hl');
+      strip.append(cell);
+    }
+    row.append(strip);
+    row.append(el('div', 'sub', lanes.length + ' lane' + (lanes.length === 1 ? '' : 's') + ' → '
+      + segs.size + ' transaction' + (segs.size === 1 ? '' : 's')
+      + (segs.size === 1 ? ' — one fetch serves the whole warp'
+         : segs.size >= lanes.length ? ' — every lane needs its own fetch' : '')));
     c.append(row);
   }
+
   const bad = sites.filter(s => s.txn > s.ideal * 2);
-  if (bad.length) c.append(el('div', 'note', 'Same work, more traffic: rearranging the indexing so that '
-    + 'consecutive threads touch consecutive elements would cut this kernel\'s memory traffic by about '
-    + (bad[0].txn / Math.max(bad[0].ideal, 1)).toFixed(0) + '×.'));
+  if (bad.length) c.append(el('div', 'note', 'Same work, more traffic: if consecutive threads touched '
+    + 'consecutive elements, this kernel would move about '
+    + (bad[0].txn / Math.max(bad[0].ideal, 1)).toFixed(0) + '× less memory.'));
   return c;
 }
 
@@ -860,12 +875,22 @@ function setThread(t) {
   state.thread = t;
   const card = document.getElementById('threadcard');
   if (!card) return;
-  const e = T.events[state.sel];
-  card.replaceWith(threadCard(e, analyze(e)));
-  document.querySelectorAll('#detail .th.hl, #detail .cell.hl').forEach(c => c.classList.remove('hl'));
+  const e = T.events[state.sel], a = analyze(e);
+  card.replaceWith(threadCard(e, a));
+  const coal = document.getElementById('coalcard');
+  if (coal) coal.replaceWith(coalescingCard(e, a));
+
+  document.querySelectorAll('#detail .hl, #detail .warphl').forEach(c => {
+    c.classList.remove('hl');
+    c.classList.remove('warphl');
+  });
   const cell = document.querySelector('#detail .th[data-t="' + t + '"]');
   if (cell) cell.classList.add('hl');
-  const a = analyze(e);
+  /* outline the whole warp, so the grid and the warp view read as the same thing */
+  const warp = warpOf(e, t);
+  document.querySelectorAll('#detail .th[data-t]').forEach(c => {
+    if (warpOf(e, +c.dataset.t) === warp && +c.dataset.t !== t) c.classList.add('warphl');
+  });
   for (const acc of a.perThread.get(t) || []) {
     const c = document.querySelector('#detail .cell[data-key="' + acc.a + ':' + acc.idx + '"]');
     if (c) c.classList.add('hl');
