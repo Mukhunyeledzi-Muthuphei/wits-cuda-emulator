@@ -160,6 +160,7 @@ label.toggle { display: flex; gap: 6px; align-items: center; margin-top: 8px; co
 .th.race { background: var(--warn); }
 .th.err { background: var(--err); }
 .th.pending { opacity: .18; }
+.th.warpstart { box-shadow: inset 2px 0 0 var(--ink-2); }
 .th.unrec { background: repeating-linear-gradient(45deg, var(--idle), var(--idle) 2px, transparent 2px, transparent 4px); }
 .th.hl { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 2; position: relative; }
 .big .th { width: 13px; height: 13px; }
@@ -288,16 +289,37 @@ function threadPos(ev, t) {
   };
 }
 
+/* A warp is WARP_SIZE consecutive threads of one block, running together. */
+function warpSize(ev) { return ev.warpSize || 32; }
+
+function warpOf(ev, t) {
+  const [bx, by, bz] = ev.block;
+  const per = bx * by * bz, w = warpSize(ev);
+  const perBlock = Math.ceil(per / w);
+  return Math.floor(t / per) * perBlock + Math.floor((t % per) / w);
+}
+
+function laneOf(ev, t) {
+  const [bx, by, bz] = ev.block;
+  return (t % (bx * by * bz)) % warpSize(ev);
+}
+
 /* Per-launch analysis: what each thread touched, and what happened to each memory cell. */
 function analyze(ev) {
   if (ev._a) return ev._a;
   const perThread = new Map(), perCell = new Map();
   const acc = ev.acc || [];
-  for (let i = 0; i < acc.length; i += 4) {
-    const t = acc[i], a = acc[i + 1], idx = acc[i + 2], f = acc[i + 3];
+  const byWarp = new Map();
+  for (let i = 0; i < acc.length; i += 5) {
+    const t = acc[i], a = acc[i + 1], idx = acc[i + 2], f = acc[i + 3], line = acc[i + 4];
     let list = perThread.get(t);
     if (!list) perThread.set(t, list = []);
-    list.push({ a, idx, f });
+    list.push({ a, idx, f, line });
+    const w = warpOf(ev, t);
+    const wkey = w + ':' + line + ':' + a;
+    let lanes = byWarp.get(wkey);
+    if (!lanes) byWarp.set(wkey, lanes = { warp: w, line, alloc: a, lanes: [] });
+    lanes.lanes.push({ lane: laneOf(ev, t), thread: t, idx });
     const key = a + ':' + idx;
     let c = perCell.get(key);
     if (!c) perCell.set(key, c = { a, idx, threads: [], read: 0, write: 0, flags: 0 });
@@ -311,8 +333,8 @@ function analyze(ev) {
     const al = allocs.get(s.alloc);
     if (al) snaps.set(s.alloc, decodeSnap(s, al));
   }
-  const touched = [...new Set((ev.acc || []).filter((_, i) => i % 4 === 1))].filter(a => a > 0);
-  return (ev._a = { perThread, perCell, snaps, touched });
+  const touched = [...new Set((ev.acc || []).filter((_, i) => i % 5 === 1))].filter(a => a > 0);
+  return (ev._a = { perThread, perCell, snaps, touched, byWarp });
 }
 
 function threadClass(list) {
@@ -337,7 +359,7 @@ function render() {
 function renderMain() {
   const main = el('main');
   const side = el('aside');
-  side.append(renderBrand(), renderStatus(), renderTimeline(), renderSteps(), renderProblems());
+  side.append(...[renderBrand(), renderStatus(), renderTimeline(), renderSteps(), renderProblems()].filter(Boolean));
   const detail = el('section');
   detail.id = 'detail';
   detail.append(renderDetail());
@@ -362,7 +384,7 @@ function renderStatus() {
   if (T.status === 'crashed') badges.append(el('div', 'badge err', 'crashed'));
   if (bad) badges.append(el('div', 'badge err', bad + (bad === 1 ? ' error' : ' errors')));
   if (warn) badges.append(el('div', 'badge warn', warn + (warn === 1 ? ' warning' : ' warnings')));
-  badges.append(el('div', 'badge', 'GPU threads ran ' + (T.order === 'shuffle' ? 'in a shuffled order' : 'in order')));
+  if (!badges.children.length) return null;   /* a clean run needs no banner */
   p.append(badges);
   return p;
 }
@@ -598,11 +620,13 @@ function launchPanels(e) {
     kvItem('same work on 1 CPU core', fmtMs(e.cpuMs || 0)));
   head.append(kv);
   if (e.ok !== false) {
-    head.append(el('div', 'note', 'On a real GPU these ' + fmtInt(e.threads)
-      + ' threads run at the same time, in groups of 32 called warps, spread over the GPU\'s cores. wcu ran them '
-      + (T.order === 'shuffle' ? 'one at a time in a shuffled order' : 'one at a time in order')
-      + ' on your CPU — so anything that depends on thread order shows up as a data race, and printf output comes '
-      + 'out jumbled, just like on real hardware.'));
+    const ws = warpSize(e);
+    head.append(el('div', 'note', 'A GPU runs these ' + fmtInt(e.threads) + ' threads in '
+      + fmtInt(e.warps || Math.ceil(e.threads / ws)) + ' warps of ' + ws
+      + ' — the lanes of a warp issue together and share memory fetches. The emulator ran one warp at a time'
+      + (T.order === 'shuffle' ? ', in a shuffled order' : ', in order')
+      + ', its lanes back to back, so anything that depends on the order of warps shows up as a data race and '
+      + 'printf output comes out jumbled, as it does on real hardware.'));
   }
   out.push(head);
   if (e.ok === false) return out;
@@ -610,7 +634,8 @@ function launchPanels(e) {
   /* thread grid */
   const grid = el('div', 'card');
   grid.append(el('h3', null, 'GPU threads'), el('div', 'sub',
-    'Each square is one GPU thread; each box is one block. Hover a thread to see what it did.'));
+    'Each square is one GPU thread and each box is one block; every ' + warpSize(e)
+    + ' threads (one warp) start at a marked square. Hover a thread to see what it did.'));
   const blocks = el('div', 'blocks');
   const nblocks = gx * gy * gz, per = bx * by * bz;
   const zoomed = state.zoomBlock != null && nblocks * per > 8192;
@@ -622,13 +647,16 @@ function launchPanels(e) {
     const bxi = b % gx, byi = Math.floor(b / gx) % gy, bzi = Math.floor(b / (gx * gy));
     box.append(el('div', 'bl', 'block ' + (gy * gz > 1 ? '(' + bxi + ', ' + byi + (gz > 1 ? ', ' + bzi : '') + ')' : bxi)));
     if (showThreads) {
+      const ws = warpSize(e);
       const th = el('div', 'threads' + (per <= 64 ? ' big' : ''));
-      const cols = by > 1 ? bx : Math.min(per, 32);
+      const cols = by > 1 ? bx : Math.min(per, ws);
       th.style.gridTemplateColumns = 'repeat(' + cols + ', auto)';
       for (let t = 0; t < per; t++) {
         const gid = b * per + t;
-        const cell = el('div', 'th ' + (gid >= recLimit ? 'unrec' : threadClass(a.perThread.get(gid))));
+        const cell = el('div', 'th ' + (gid >= recLimit ? 'unrec' : threadClass(a.perThread.get(gid)))
+          + (t % ws === 0 ? ' warpstart' : ''));
         cell.dataset.t = gid;
+        cell.title = 'thread ' + gid + ' · warp ' + warpOf(e, gid) + ', lane ' + (t % ws);
         th.append(cell);
       }
       th.onmouseover = ev => { if (ev.target.dataset.t) setThread(+ev.target.dataset.t); };
@@ -683,6 +711,9 @@ function launchPanels(e) {
   /* selected thread */
   out.push(threadCard(e, a));
 
+  const coal = coalescingCard(e, a);
+  if (coal) out.push(coal);
+
   /* memory */
   const mem = el('div', 'card');
   mem.append(el('h3', null, 'Device memory after the kernel'),
@@ -696,16 +727,77 @@ function launchPanels(e) {
   return out;
 }
 
+/* What the warps did to memory: one 128-byte transaction shared, or one each. */
+function coalescingCard(e, a) {
+  const sites = (e.sites || []).filter(s => s.alloc > 0 && s.warps > 0);
+  if (!sites.length) return null;
+  const c = el('div', 'card');
+  const txnBytes = (T.model && T.model.txnBytes) || 128;
+  const w = warpSize(e);
+  c.append(el('h3', null, 'How the warps read memory'), el('div', 'sub',
+    'A warp is ' + w + ' threads that run together and fetch memory in ' + txnBytes
+    + '-byte transactions. Neighbouring threads reading neighbouring elements share a transaction; '
+    + 'scattered threads each need their own.'));
+
+  for (const site of sites) {
+    const al = allocs.get(site.alloc);
+    const per = site.txn / site.warps, ideal = Math.max(site.ideal / site.warps, 1);
+    const ratio = site.txn / Math.max(site.ideal, 1);
+    const row = el('div', 'strip');
+    const hdr = el('div', 'hdr');
+    hdr.append(el('span', null, (al ? al.name : 'memory') + '  ·  line ' + site.line),
+      el('span', null, per.toFixed(1) + ' transaction' + (per === 1 ? '' : 's') + ' per warp'
+        + (ratio > 1.5 ? '  ·  ' + ratio.toFixed(0) + '× the ideal traffic' : '  ·  coalesced')));
+    row.append(hdr);
+
+    /* one real warp from the trace, lane by lane */
+    let sample = null;
+    for (const g of a.byWarp.values())
+      if (g.line === site.line && g.alloc === site.alloc && (!sample || g.lanes.length > sample.lanes.length)) {
+        sample = g;
+        if (sample.lanes.length >= w) break;
+      }
+    if (sample && al) {
+      const es = al.elemSize || 1;
+      const segs = new Map();
+      for (const l of sample.lanes) {
+        const seg = Math.floor(l.idx * es / txnBytes);
+        if (!segs.has(seg)) segs.set(seg, segs.size);
+      }
+      const lanes = el('div', 'cells');
+      for (const l of sample.lanes.sort((x, y) => x.lane - y.lane)) {
+        const seg = Math.floor(l.idx * es / txnBytes);
+        const cell = el('div', 'cell wide');
+        cell.textContent = fmtInt(l.idx);
+        cell.title = 'lane ' + l.lane + ' reads ' + al.name + '[' + fmtInt(l.idx) + '], '
+          + txnBytes + '-byte transaction #' + seg;
+        cell.style.background = 'hsl(' + (segs.get(seg) * 67 % 360) + ' 55% 48%)';
+        lanes.append(cell);
+      }
+      row.append(lanes);
+      row.append(el('div', 'sub', 'warp ' + fmtInt(sample.warp) + ': ' + sample.lanes.length
+        + ' lanes → ' + segs.size + ' transaction' + (segs.size === 1 ? '' : 's')
+        + (segs.size === 1 ? ' (one fetch serves the whole warp)' : ', one colour each')));
+    }
+    c.append(row);
+  }
+  const bad = sites.filter(s => s.txn > s.ideal * 2);
+  if (bad.length) c.append(el('div', 'note', 'Same work, more traffic: rearranging the indexing so that '
+    + 'consecutive threads touch consecutive elements would cut this kernel\'s memory traffic by about '
+    + (bad[0].txn / Math.max(bad[0].ideal, 1)).toFixed(0) + '×.'));
+  return c;
+}
+
 function playRow(e, a) {
   const row = el('div', 'row');
   if (!e.order || !e.order.length) return row;
-  const btn = el('button', null, state.play ? '■ stop' : '▶ run the threads one by one');
+  const btn = el('button', null, state.play ? '■ stop' : '▶ run the warps one by one');
   btn.onclick = () => {
     if (state.play) { stopPlay(); return; }
     startPlay(e, a);
   };
   row.append(btn);
-  const info = el('span', 'sub', state.play ? '' : 'wcu ran them in this order — a stand-in for the unpredictable order of a real GPU.');
+  const info = el('span', 'sub', state.play ? '' : 'Threads light up 32 at a time: one warp, running together, in the order the emulator picked.');
   info.id = 'playinfo';
   row.append(info);
   return row;
@@ -733,19 +825,34 @@ function startPlay(e, a) {
       l.push(c);
     }
   });
-  const order = e.order;
-  const step = Math.max(1, Math.floor(order.length / 220));
+  /* Threads ran warp by warp, so reveal them that way: all 32 lanes at once. */
+  const groups = [];
+  for (const t of e.order || []) {
+    const w = warpOf(e, t);
+    if (!groups.length || groups[groups.length - 1].warp !== w) groups.push({ warp: w, threads: [] });
+    groups[groups.length - 1].threads.push(t);
+  }
+  const step = Math.max(1, Math.floor(groups.length / 200));
   let i = 0;
   const info = document.getElementById('playinfo');
   playTimer = setInterval(() => {
-    for (let k = 0; k < step && i < order.length; k++, i++) {
-      const t = order[i];
-      const cell = document.querySelector('#detail .th[data-t="' + t + '"]');
-      if (cell) cell.classList.remove('pending');
-      for (const c of byThread.get(t) || []) c.classList.remove('pending');
+    let last = null;
+    for (let k = 0; k < step && i < groups.length; k++, i++) {
+      last = groups[i];
+      for (const t of last.threads) {
+        const cell = document.querySelector('#detail .th[data-t="' + t + '"]');
+        if (cell) cell.classList.remove('pending');
+        for (const c of byThread.get(t) || []) c.classList.remove('pending');
+      }
     }
-    if (info) info.textContent = fmtInt(i) + ' of ' + fmtInt(order.length) + ' GPU threads have run';
-    if (i >= order.length) { clearInterval(playTimer); playTimer = null; state.play = null; }
+    if (info && last) info.textContent = 'warp ' + fmtInt(i) + ' of ' + fmtInt(groups.length)
+      + ' — ' + last.threads.length + ' lanes together';
+    if (i >= groups.length) {
+      clearInterval(playTimer);
+      playTimer = null;
+      state.play = null;
+      if (info) info.textContent = 'all ' + fmtInt(groups.length) + ' warps have run';
+    }
   }, 16);
 }
 
@@ -780,7 +887,8 @@ function threadCard(e, a) {
   c.append(el('h3', null, 'GPU thread #' + fmtInt(t)));
   const kv = el('div', 'kv');
   kv.append(kvItem('blockIdx', '(' + p.block.join(', ') + ')'), kvItem('threadIdx', '(' + p.thread.join(', ') + ')'),
-    kvItem('blockDim', '(' + e.block.join(', ') + ')'), kvItem('gridDim', '(' + e.grid.join(', ') + ')'));
+    kvItem('blockDim', '(' + e.block.join(', ') + ')'), kvItem('gridDim', '(' + e.grid.join(', ') + ')'),
+    kvItem('warp', fmtInt(warpOf(e, t)) + ', lane ' + laneOf(e, t) + ' of ' + warpSize(e)));
   c.append(kv);
   const mathBox = el('div', 'note mono');
   let lines = 'blockIdx.x * blockDim.x + threadIdx.x = ' + p.block[0] + ' * ' + bx + ' + ' + p.thread[0]

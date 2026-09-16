@@ -37,3 +37,6 @@ err_api_misuse               | diag    | [unchecked-error]
 err_api_misuse               | exit    | 1
 11_atomic_sum                | clean   |
 11_atomic_sum                | output  | sum = 1024 (expected 1024)
+12_coalescing                | diag    | [uncoalesced-access]
+12_coalescing                | diag    | 32.0 memory transactions here, not 1.0
+12_coalescing                | output  | c[4242] = 8484.0

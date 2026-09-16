@@ -36,8 +36,11 @@
 
 /* ---- The simulated GPU ---------------------------------------------------- */
 
-#define MODEL_CORES              2048    /* GPU threads that run at once       */
-#define MODEL_GPU_NS_PER_OP      12.0    /* cost of one memory access on GPU   */
+#define WARP_SIZE                32      /* threads that issue together        */
+#define MODEL_WARPS_RESIDENT     64      /* warps running at once (2048 threads)*/
+#define MODEL_TXN_BYTES          128     /* bytes fetched by one memory transaction */
+#define MODEL_NS_PER_TXN         0.25    /* device-wide cost of one transaction */
+#define MODEL_NS_PER_OP_ISSUE    20.0    /* issuing one instruction to one warp */
 #define MODEL_CPU_NS_PER_OP      0.4     /* same work on one CPU core          */
 #define MODEL_LAUNCH_MS          0.02    /* kernel launch overhead            */
 #define MODEL_API_MS             0.005   /* host-side cost of an async call    */
@@ -183,7 +186,25 @@ typedef struct {
 
 enum { F_OOB = 8, F_RACE = 16, F_UNINIT = 32, F_INVALID = 64, F_ATOMIC = 128 };
 
-typedef struct { int32_t thread; int32_t alloc; long long index; int32_t flags; } rec_t;
+typedef struct { int32_t thread; int32_t alloc; long long index; int32_t flags; int32_t line; } rec_t;
+
+/* One place in the source where a warp touched memory, and the 128-byte
+ * transactions its 32 lanes needed there. Consecutive lanes hitting consecutive
+ * elements share a transaction; a scattered warp needs one each. */
+typedef struct {
+    int line, alloc;
+    const char *file;
+    long long lanes, bytes;
+    int nsegs;
+    uint64_t segs[WARP_SIZE];
+} warpsite_t;
+
+/* Totals per access site, gathered over every warp of a launch. */
+typedef struct {
+    int line, alloc;
+    const char *file;
+    long long txn, ideal, lanes, warps;
+} coalsite_t;
 
 typedef struct { const char *label; char text[512]; } row_t;
 
@@ -204,7 +225,7 @@ static struct {
 
     double host_ms, busy_ms, last_real;
     double kernel_ms, h2d_ms, d2h_ms, wait_ms;
-    long long threads_run;
+    long long threads_run, warps_run;
     int nlaunches;
 
     sbuf events;
@@ -232,6 +253,11 @@ static struct {
     int line, kfirst, klast;
     dim3 grid, block;
     long long total, per_block, cur_thread, ops, thread_recs, total_ops, max_ops;
+    long long warps_per_block, total_warps, slots, cur_warp, txn_total, ideal_total;
+    warpsite_t ws[16];
+    int nws, ws_dropped;
+    coalsite_t cs[MAX_KDIAG];
+    int ncs;
     int half_bits;
     uint64_t key;
     kdiag_t kd[MAX_KDIAG];
@@ -1162,6 +1188,8 @@ cudaError cudaGetDeviceCount(int *count) { if (count) *count = 1; return cudaSuc
 cudaError cudaSetDevice(int device) { return device == 0 ? cudaSuccess : cudaErrorInvalidDevice; }
 cudaError cudaGetDevice(int *device) { if (device) *device = 0; return cudaSuccess; }
 
+static void flush_warp(void);
+
 /* ---- Kernel launches ------------------------------------------------------------- */
 
 static uint64_t mix64(uint64_t x)
@@ -1172,7 +1200,7 @@ static uint64_t mix64(uint64_t x)
     return x ^ (x >> 31);
 }
 
-/* A random permutation of [0, total) without storing it: Feistel + cycle walking. */
+/* A random permutation of [0, total_warps) without storing it: Feistel + cycle walking. */
 static long long permute(long long i)
 {
     uint64_t mask = ((uint64_t)1 << C.half_bits) - 1;
@@ -1186,7 +1214,7 @@ static long long permute(long long i)
             l = nl;
         }
         x = (l << C.half_bits) | r;
-    } while (x >= (uint64_t)C.total);
+    } while (x >= (uint64_t)C.total_warps);
     return (long long)x;
 }
 
@@ -1290,8 +1318,14 @@ int wcu_launch_begin(wcu_launch *L, const char *kernel, dim3 grid, dim3 block, c
 
     C.per_block = (long long)block.x * block.y * block.z;
     C.total = (long long)grid.x * grid.y * grid.z * C.per_block;
+    C.warps_per_block = (C.per_block + WARP_SIZE - 1) / WARP_SIZE;
+    C.total_warps = (long long)grid.x * grid.y * grid.z * C.warps_per_block;
+    C.slots = C.total_warps * WARP_SIZE;
+    C.cur_warp = -1;
+    C.nws = C.ncs = C.ws_dropped = 0;
+    C.txn_total = C.ideal_total = 0;
     int bits = 2;
-    while (bits < 62 && ((long long)1 << bits) < C.total) bits++;
+    while (bits < 62 && ((long long)1 << bits) < C.total_warps) bits++;
     C.half_bits = (bits + 1) / 2;
     C.key = mix64(G.seed + (uint64_t)C.id);
     C.active = 1;
@@ -1311,11 +1345,28 @@ int wcu_launch_next(wcu_launch *L)
 {
     if (!L->ok) return 0;
     if (L->next > 0) finish_thread();
-    if (L->next >= L->total) return 0;
-    long long t = G.shuffle ? permute(L->next) : L->next;
-    L->next++;
+
+    /* Slots are laid out warp by warp. The lanes of one warp run back to back,
+     * the way a real warp issues together; the warps themselves are shuffled. */
+    long long t, warp;
+    for (;;) {
+        if (L->next >= C.slots) { flush_warp(); return 0; }
+        long long slot = L->next++;
+        long long wslot = slot / WARP_SIZE, lane = slot % WARP_SIZE;
+        warp = G.shuffle ? permute(wslot) : wslot;
+        long long b = warp / C.warps_per_block, wib = warp % C.warps_per_block;
+        long long th = wib * WARP_SIZE + lane;
+        if (th >= C.per_block) continue;          /* an inactive lane of a partial warp */
+        t = b * C.per_block + th;
+        break;
+    }
+    if (warp != C.cur_warp) {
+        flush_warp();
+        C.cur_warp = warp;
+    }
 
     long long b = t / C.per_block, th = t % C.per_block;
+    (void)0;
     wcu_tls.block_idx = (dim3){ (unsigned)(b % C.grid.x), (unsigned)(b / C.grid.x % C.grid.y),
                                   (unsigned)(b / ((long long)C.grid.x * C.grid.y)) };
     wcu_tls.thread_idx = (dim3){ (unsigned)(th % C.block.x), (unsigned)(th / C.block.x % C.block.y),
@@ -1370,7 +1421,59 @@ static void kdiag(int kind, alloc_t *a, const char *name, const char *file, int 
     if (d->last_thread != t) { d->threads++; d->last_thread = t; }
 }
 
-static void rec_add(int alloc, long long index, int flags)
+/* Fold the warp that just finished into the per-site totals. */
+static void flush_warp(void)
+{
+    for (int i = 0; i < C.nws; i++) {
+        warpsite_t *w = &C.ws[i];
+        long long ideal = (w->bytes + MODEL_TXN_BYTES - 1) / MODEL_TXN_BYTES;
+        if (ideal < 1) ideal = 1;
+        C.txn_total += w->nsegs;
+        C.ideal_total += ideal;
+        coalsite_t *c = NULL;
+        for (int k = 0; k < C.ncs; k++)
+            if (C.cs[k].line == w->line && C.cs[k].alloc == w->alloc) { c = &C.cs[k]; break; }
+        if (!c && C.ncs < MAX_KDIAG) {
+            c = &C.cs[C.ncs++];
+            *c = (coalsite_t){ w->line, w->alloc, w->file, 0, 0, 0, 0 };
+        }
+        if (c) {
+            c->txn += w->nsegs;
+            c->ideal += ideal;
+            c->lanes += w->lanes;
+            c->warps++;
+        }
+    }
+    C.nws = 0;
+}
+
+/* Record one lane's access inside the warp that is running. */
+static void warp_access(int alloc, uintptr_t addr, size_t esz, const char *file, int line)
+{
+    uint64_t seg = (uint64_t)addr / MODEL_TXN_BYTES;
+    warpsite_t *w = NULL;
+    for (int i = 0; i < C.nws; i++)
+        if (C.ws[i].line == line && C.ws[i].alloc == alloc) { w = &C.ws[i]; break; }
+    if (!w) {
+        if (C.nws == (int)(sizeof C.ws / sizeof C.ws[0])) { C.ws_dropped++; return; }
+        w = &C.ws[C.nws++];
+        *w = (warpsite_t){ line, alloc, file, 0, 0, 0, { 0 } };
+    }
+    w->lanes++;
+    w->bytes += (long long)esz;
+    for (int i = 0; i < w->nsegs; i++)
+        if (w->segs[i] == seg) return;
+    /* A lane may straddle two transactions (an 8-byte value at offset 124). */
+    if (w->nsegs < WARP_SIZE) w->segs[w->nsegs++] = seg;
+    uint64_t last = (uint64_t)(addr + esz - 1) / MODEL_TXN_BYTES;
+    if (last != seg && w->nsegs < WARP_SIZE) {
+        for (int i = 0; i < w->nsegs; i++)
+            if (w->segs[i] == last) return;
+        w->segs[w->nsegs++] = last;
+    }
+}
+
+static void rec_add(int alloc, long long index, int flags, int line)
 {
     if (!G.tracing || !C.active) return;
     long long t = wcu_tls.thread_id;
@@ -1382,7 +1485,7 @@ static void rec_add(int alloc, long long index, int flags)
         C.caprec = C.caprec ? C.caprec * 2 : 4096;
         C.rec = realloc(C.rec, sizeof *C.rec * C.caprec);
     }
-    C.rec[C.nrec++] = (rec_t){ (int32_t)t, alloc, index, flags };
+    C.rec[C.nrec++] = (rec_t){ (int32_t)t, alloc, index, flags, line };
     C.thread_recs++;
     G.rec_total++;
 }
@@ -1417,7 +1520,7 @@ void *wcu_access(void *base, size_t esz, long long index, int rw, int type, cons
             kdiag(KD_HOST_MEMORY, NULL, name, file, line, index, -1, b);
             if (!G.sticky) { G.sticky = cudaErrorIllegalAddress; G.sticky_line = C.line; }
         }
-        rec_add(-1, index, rw | F_INVALID);
+        rec_add(-1, index, rw | F_INVALID, line);
         return scratch(esz);
     }
 
@@ -1442,12 +1545,12 @@ void *wcu_access(void *base, size_t esz, long long index, int rw, int type, cons
     C.ops++;
     if (!a) {
         kdiag(KD_NOT_ALLOC, nearest_alloc(b), name, file, line, index, -1, b);
-        rec_add(-1, index, rw | F_INVALID);
+        rec_add(-1, index, rw | F_INVALID, line);
         return scratch(esz);
     }
     if (a->freed) {
         kdiag(KD_USE_AFTER_FREE, a, name, file, line, index, -1, b);
-        rec_add(a->id, index, rw | F_INVALID);
+        rec_add(a->id, index, rw | F_INVALID, line);
         return scratch(esz);
     }
 
@@ -1459,7 +1562,7 @@ void *wcu_access(void *base, size_t esz, long long index, int rw, int type, cons
 
     if (off < 0 || (unsigned long long)off + esz > a->size) {
         kdiag((rw & WCU_WRITE) ? KD_OOB_WRITE : KD_OOB_READ, a, name, file, line, ei, -1, b);
-        rec_add(a->id, ei, rw | F_OOB);
+        rec_add(a->id, ei, rw | F_OOB, line);
         return scratch(esz);
     }
 
@@ -1503,7 +1606,8 @@ void *wcu_access(void *base, size_t esz, long long index, int rw, int type, cons
         }
     }
     if (rw & WCU_WRITE) memset(a->init + off, 1, esz);
-    rec_add(a->id, ei, flags);
+    if (C.active) warp_access(a->id, (uintptr_t)(a->addr + (unsigned long long)off), esz, file, line);
+    rec_add(a->id, ei, flags, line);
     return a->data + off;
 }
 
@@ -1680,19 +1784,58 @@ static void flush_kernel_diags(void)
     }
 }
 
+/* Warn when the lanes of a warp scatter across memory instead of sharing transactions. */
+static void report_coalescing(void)
+{
+    for (int i = 0; i < C.ncs; i++) {
+        coalsite_t *c = &C.cs[i];
+        /* 2-3x is ordinary (array-of-structs, RGB bytes, 2D blocks); the visualization
+         * shows those numbers anyway. Warn only when lanes are truly scattered. */
+        if (c->lanes < WARP_SIZE || c->ideal <= 0 || c->txn <= c->ideal * 4) continue;
+        alloc_t *a = c->alloc > 0 ? G.allocs[c->alloc - 1] : NULL;
+        double per_warp = (double)c->txn / (double)c->warps;
+        double ideal_per_warp = (double)c->ideal / (double)c->warps;
+        char title[400], hint[512], desc[400];
+        row_t r[4];
+        int nr = 0;
+        snprintf(title, sizeof title, "uncoalesced memory access in kernel `%s`%s%s%s", C.kernel,
+                 a ? " on `" : "", a ? a->name : "", a ? "`" : "");
+        ROW(r[nr], "warp", "each warp of %d threads needed %.1f memory transactions here, not %.1f",
+            WARP_SIZE, per_warp, ideal_per_warp < 1 ? 1.0 : ideal_per_warp); nr++;
+        ROW(r[nr], "cost", "%lld transactions instead of %lld: about %.0f× the memory traffic",
+            c->txn, c->ideal, (double)c->txn / (double)c->ideal); nr++;
+        if (a) { alloc_desc(a, desc, sizeof desc); ROW(r[nr], "memory", "%s", desc); nr++; }
+        snprintf(hint, sizeof hint,
+                 "A warp fetches memory in %d-byte transactions. When its 32 threads read 32 neighbouring "
+                 "elements, one transaction serves them all; when they are spread out, each thread needs its "
+                 "own. Arrange the indexing so that thread i touches element i (consecutive threadIdx.x -> "
+                 "consecutive addresses), rather than i * stride.", MODEL_TXN_BYTES);
+        report(SEV_WARNING, "uncoalesced-access", c->file ? c->file : C.file, c->line, c->alloc,
+               title, r, nr, hint);
+    }
+}
+
 void wcu_launch_end(wcu_launch *L)
 {
     if (L->ok) {
         if (L->next > 0) finish_thread();
         wcu_tls = (wcu_tls_state){0};
         G.threads_run += C.total;
+        G.warps_run += C.total_warps;
     }
+    if (L->ok) flush_warp();
     flush_kernel_diags();
+    if (L->ok) report_coalescing();
 
     double dur = 0, t0 = max_d(G.host_ms, G.busy_ms);
     if (L->ok) {
-        long long rounds = (C.total + MODEL_CORES - 1) / MODEL_CORES;
-        dur = MODEL_LAUNCH_MS + (double)rounds * (double)C.max_ops * MODEL_GPU_NS_PER_OP / 1e6;
+        /* Memory: every 128-byte transaction the warps needed, at device throughput.
+         * Issue: each resident round of warps issues the instructions of its slowest
+         * thread. A real GPU overlaps the two, so the slower one sets the pace. */
+        double mem_ns = (double)C.txn_total * MODEL_NS_PER_TXN;
+        long long rounds = (C.total_warps + MODEL_WARPS_RESIDENT - 1) / MODEL_WARPS_RESIDENT;
+        double issue_ns = (double)rounds * (double)C.max_ops * MODEL_NS_PER_OP_ISSUE;
+        dur = MODEL_LAUNCH_MS + max_d(mem_ns, issue_ns) / 1e6;
         G.busy_ms = t0 + dur;
         G.kernel_ms += dur;
     }
@@ -1705,12 +1848,18 @@ void wcu_launch_end(wcu_launch *L)
                   C.grid.z, C.block.x, C.block.y, C.block.z, L->ok ? "true" : "false");
         sb_json_str(&G.events, C.reason);
         sb_printf(&G.events, ",\"threads\":%lld,\"tHost\":%g,\"t0\":%g,\"t1\":%g,\"opsMax\":%lld,\"opsTotal\":%lld,"
-                             "\"cpuMs\":%g,\"recLimit\":%d,\"kfirst\":%d,\"klast\":%d,\"recDropped\":%lld,\"acc\":[",
+                             "\"cpuMs\":%g,\"recLimit\":%d,\"kfirst\":%d,\"klast\":%d,\"recDropped\":%lld,"
+                             "\"warpSize\":%d,\"warps\":%lld,\"txn\":%lld,\"txnIdeal\":%lld,\"sites\":[",
                   C.total, C.t_host, t0, t0 + dur, C.max_ops, C.total_ops,
-                  (double)C.total_ops * MODEL_CPU_NS_PER_OP / 1e6, REC_MAX_THREAD_ID, C.kfirst, C.klast, C.rec_dropped);
+                  (double)C.total_ops * MODEL_CPU_NS_PER_OP / 1e6, REC_MAX_THREAD_ID, C.kfirst, C.klast, C.rec_dropped,
+                  WARP_SIZE, C.total_warps, C.txn_total, C.ideal_total);
+        for (int i = 0; i < C.ncs; i++)
+            sb_printf(&G.events, "%s{\"line\":%d,\"alloc\":%d,\"txn\":%lld,\"ideal\":%lld,\"lanes\":%lld,\"warps\":%lld}",
+                      i ? "," : "", C.cs[i].line, C.cs[i].alloc, C.cs[i].txn, C.cs[i].ideal, C.cs[i].lanes, C.cs[i].warps);
+        sb_puts(&G.events, "],\"acc\":[");
         for (size_t i = 0; i < C.nrec; i++)
-            sb_printf(&G.events, "%s%d,%d,%lld,%d", i ? "," : "", C.rec[i].thread, C.rec[i].alloc, C.rec[i].index,
-                      C.rec[i].flags);
+            sb_printf(&G.events, "%s%d,%d,%lld,%d,%d", i ? "," : "", C.rec[i].thread, C.rec[i].alloc, C.rec[i].index,
+                      C.rec[i].flags, C.rec[i].line);
         sb_puts(&G.events, "],\"order\":[");
         for (size_t i = 0; i < C.norder; i++) sb_printf(&G.events, "%s%lld", i ? "," : "", C.order[i]);
         sb_puts(&G.events, "],\"snaps\":[");
@@ -1895,9 +2044,11 @@ static void write_trace(void)
     sb_json_str(&j, getcwd(cwd, sizeof cwd) ? cwd : "");
     sb_printf(&j, ",\"status\":\"%s\",\"order\":\"%s\",\"seed\":%llu", G.crashed ? "crashed" : "ok",
               G.shuffle ? "shuffle" : "sequential", (unsigned long long)G.seed);
-    sb_printf(&j, ",\"model\":{\"cores\":%d,\"gpuNsPerOp\":%g,\"cpuNsPerOp\":%g,\"launchMs\":%g,\"contextInitMs\":%g,"
+    sb_printf(&j, ",\"model\":{\"warpSize\":%d,\"warpsResident\":%d,\"txnBytes\":%d,\"nsPerTxn\":%g,"
+                  "\"nsPerIssue\":%g,\"cpuNsPerOp\":%g,\"launchMs\":%g,\"contextInitMs\":%g,"
                   "\"pageableGBps\":%g,\"pinnedGBps\":%g,\"latencyMs\":%g,\"maxThreadsPerBlock\":%d,\"deviceBytes\":%zu}",
-              MODEL_CORES, MODEL_GPU_NS_PER_OP, MODEL_CPU_NS_PER_OP, MODEL_LAUNCH_MS, MODEL_CONTEXT_INIT_MS,
+              WARP_SIZE, MODEL_WARPS_RESIDENT, MODEL_TXN_BYTES, MODEL_NS_PER_TXN, MODEL_NS_PER_OP_ISSUE,
+              MODEL_CPU_NS_PER_OP, MODEL_LAUNCH_MS, MODEL_CONTEXT_INIT_MS,
               MODEL_PCIE_PAGEABLE_GBPS, MODEL_PCIE_PINNED_GBPS, MODEL_PCIE_LATENCY_MS, MAX_THREADS_PER_BLOCK, G.limit);
     sb_printf(&j, ",\"totals\":{\"hostMs\":%g,\"endMs\":%g,\"kernelMs\":%g,\"h2dMs\":%g,\"d2hMs\":%g,\"waitMs\":%g,"
                   "\"launches\":%d,\"threads\":%lld,\"peakBytes\":%zu,\"errors\":%d,\"warnings\":%d,\"eventsDropped\":%d}",
@@ -1997,7 +2148,10 @@ static void finalize(void)
     fmt_int(G.threads_run, thr, sizeof thr);
     double end = max_d(G.host_ms, G.busy_ms);
     fprintf(stderr, "\n%s── wcu run summary %s─────────────────────────────────────────%s\n", BOLD, DIM, RESET);
-    fprintf(stderr, "  %-10s %d launch%s, %s GPU threads\n", "kernels", G.nlaunches, G.nlaunches == 1 ? "" : "es", thr);
+    char wrp[32];
+    fmt_int(G.warps_run, wrp, sizeof wrp);
+    fprintf(stderr, "  %-10s %d launch%s, %s GPU threads in %s warps of %d\n", "kernels", G.nlaunches,
+            G.nlaunches == 1 ? "" : "es", thr, wrp, WARP_SIZE);
     fprintf(stderr, "  %-10s peak %s of device memory in %d allocation%s\n", "memory", tot, G.nallocs, G.nallocs == 1 ? "" : "s");
     fprintf(stderr, "  %-10s %.2f ms simulated: context %.0f · host→device %.3f · kernels %.3f · device→host %.3f\n",
             "time", end, MODEL_CONTEXT_INIT_MS, G.h2d_ms, G.kernel_ms, G.d2h_ms);

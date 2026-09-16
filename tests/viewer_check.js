@@ -72,7 +72,7 @@ for (const file of traces) {
       }
     }
     if (!app.textContent.includes('Wits CUDA Emulator')) throw new Error('page rendered empty');
-    if (!app.textContent.includes('GPU threads ran')) throw new Error('status badges missing from the sidebar');
+    if (T.totals.errors && !app.textContent.includes('error')) throw new Error('error badge missing from the sidebar');
     console.log('  ok    viewer: ' + name);
   } catch (e) {
     failures++;

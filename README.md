@@ -67,6 +67,7 @@ Each one is a small, complete program. The numbered bugs are the mistakes studen
 | `09_bytes_not_elements.cu` | `cudaMemcpy` counting bytes, not elements |
 | `10_host_function_in_kernel.cu` | mistakes caught before the program runs |
 | `11_atomic_sum.cu` | the fix for 05, using `atomicAdd` |
+| `12_coalescing.cu` | warps: the same work, done twice, with 32× the memory traffic |
 
 ## What WCU checks
 
@@ -77,7 +78,7 @@ Reported while the program runs, with source line and thread:
 `partial-coverage` (a launch that computed only part of an array) · `invalid-configuration` ·
 `memcpy-swapped` · `memcpy-wrong-side` · `memcpy-overflow` · `memcpy-partial` ·
 `memcpy-uninitialized` · `double-free` · `free-host-pointer` · `out-of-memory` ·
-`device-error-state` · `memory-leak` · `unchecked-error`
+`device-error-state` · `memory-leak` · `unchecked-error` · `uncoalesced-access`
 
 Caught at compile time, the way `nvcc` would: calling a host function from a kernel, calling a
 kernel without `<<< >>>`, using `threadIdx` in host code, a kernel returning something other
@@ -101,9 +102,12 @@ your.cu ──wcu-translate──► plain C ──clang──► program ──
   thread read or wrote it — that is where race and uninitialized-read detection come from.
 - **`viewer/viewer.html`** is the visualization; the runtime embeds the trace into a copy of it.
 
-Kernel threads run one at a time, in a shuffled order by default. That order is deliberately
-unstable: code whose result depends on it is buggy on real hardware, and shuffling helps expose
-it (`printf` from a kernel comes out jumbled, as it does on a GPU).
+Threads run one at a time, but grouped into **warps** of 32: the lanes of a warp run back to
+back, and the warps themselves are shuffled. While a warp runs, WCU records which 128-byte
+transactions its lanes touched, which is how it measures coalescing — one transaction shared by
+32 neighbouring threads, or 32 separate ones for a scattered warp. The shuffled warp order is
+deliberately unstable: code whose result depends on it is buggy on real hardware, and shuffling
+helps expose it (`printf` from a kernel comes out jumbled, as it does on a GPU).
 
 ### The simulated clock
 
@@ -114,10 +118,17 @@ measurement of your machine:
 | --- | --- |
 | CUDA start-up (first call) | 80 ms |
 | kernel launch overhead | 0.02 ms |
-| threads running at once | 2048 |
-| memory access, GPU thread | 12 ns |
+| warp size | 32 threads |
+| warps resident at once | 64 (2048 threads) |
+| memory transaction | 128 bytes, 0.25 ns each device-wide |
+| instruction issued to one warp | 20 ns |
 | memory access, one CPU core | 0.4 ns |
 | host ⇄ device copy | 6 GB/s (12 GB/s from `cudaMallocHost`) |
+
+A kernel's time is `launch overhead + max(memory, issue)`: the transactions its warps actually
+needed against the instructions its warps had to issue, since a GPU overlaps the two. That is
+why scattering an access pattern makes the modelled kernel slower — it really does need more
+transactions.
 
 Host code is timed for real, since it runs natively. Launches are asynchronous, as on a GPU: the
 CPU continues, and a copy or `cudaDeviceSynchronize` waits for the device. The lesson that
@@ -137,7 +148,10 @@ Not supported yet:
 - **`__shared__` memory and `__syncthreads()`** — these need threads in a block to pause at a
   barrier, which the one-thread-at-a-time design cannot do. This is the largest gap; it rules
   out tiled matrix multiply and block-level reductions.
-- Streams, events, unified memory, warp intrinsics, textures, dynamic parallelism.
+- **Branch divergence.** Warps are modelled for memory (coalescing) but not for control flow:
+  `if (threadIdx.x % 2)` costs a real warp both sides of the branch, and costs nothing here.
+- Streams, events, unified memory, warp intrinsics (`__shfl_sync`, `__ballot_sync`), textures,
+  dynamic parallelism.
 - Libraries: cuBLAS, cuRAND, Thrust.
 - C++ in `.cu` files (templates, classes, `new`). Write C, as `nvcc` also accepts it.
 - Inside kernels, memory reached in ways the translator cannot see (a pointer cast in a macro,
