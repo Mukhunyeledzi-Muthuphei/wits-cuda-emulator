@@ -537,8 +537,8 @@ function renderDetail() {
 
   if (e.type === 'launch') {
     const p = launchPanels(e);
-    primary.append(p[0]);
-    if (p[1]) primary.append(p[1]);                       /* the thread grid stays on top */
+    if (p[1]) primary.append(p[1]);      /* the thread grid is what you came to see */
+    primary.append(p[0]);                /* the launch summary reads as a caption below it */
     if (p[2]) tabs.push({ name: 'Thread', node: p[2] });
     if (p[3]) tabs.push({ name: 'Warp memory', node: p[3] });
     if (p[4]) tabs.push({ name: 'Device memory', node: p[4] });
