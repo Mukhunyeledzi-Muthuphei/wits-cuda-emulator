@@ -1,5 +1,7 @@
 # WCU — the Wits CUDA emulator
 
+**Website:** https://mukhunyeledzi-muthuphei.github.io/wits-cuda-emulator/ — live demos of the visualizer.
+
 WCU (command: `wcu`) runs CUDA C programs on the CPU. It is not fast, and it is not meant to be: it exists so
 that the ideas of CUDA — blocks and threads, separate host and device memory, copies across a
 slow link, races between threads that run at the same time — can be learned, seen and debugged

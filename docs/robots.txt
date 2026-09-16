@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mukhunyeledzi-muthuphei.github.io/wits-cuda-emulator/sitemap.xml

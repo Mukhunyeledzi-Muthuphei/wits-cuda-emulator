@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WCU — CUDA Emulator: Run and Debug CUDA C Without a GPU</title>
+<meta name="description" content="Run CUDA C on any Mac or Linux CPU. WCU, the Wits CUDA emulator, explains out-of-bounds writes and data races and visualizes every GPU thread.">
+<meta name="keywords" content="CUDA emulator, CUDA without GPU, run CUDA on Mac, CUDA on CPU, learn CUDA, CUDA debugger, CUDA data race, CUDA out of bounds, GPU programming course, nvcc alternative, Wits">
+<meta name="author" content="Mukhunyeledzi Muthuphei">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#14161b">
+<link rel="canonical" href="https://mukhunyeledzi-muthuphei.github.io/wits-cuda-emulator/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="WCU — Wits CUDA Emulator">
+<meta property="og:title" content="WCU — Run and debug CUDA C without a GPU">
+<meta property="og:description" content="A teaching emulator that runs CUDA programs on your CPU, explains every out-of-bounds write and data race, and draws the whole run.">
+<meta property="og:url" content="https://mukhunyeledzi-muthuphei.github.io/wits-cuda-emulator/">
+<meta property="og:image" content="https://mukhunyeledzi-muthuphei.github.io/wits-cuda-emulator/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="WCU reporting an out-of-bounds write in a CUDA kernel, with the grid of GPU threads">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="WCU — Run and debug CUDA C without a GPU">
+<meta name="twitter:description" content="Runs CUDA programs on your CPU, explains every mistake with the source line and GPU thread, and draws the run.">
+<meta name="twitter:image" content="https://mukhunyeledzi-muthuphei.github.io/wits-cuda-emulator/assets/og-image.png">
+
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://mukhunyeledzi-muthuphei.github.io/wits-cuda-emulator/#website",
+      "url": "https://mukhunyeledzi-muthuphei.github.io/wits-cuda-emulator/",
+      "name": "WCU — Wits CUDA Emulator",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://mukhunyeledzi-muthuphei.github.io/wits-cuda-emulator/#software",
+      "name": "WCU — Wits CUDA Emulator",
+      "alternateName": ["wcu", "Wits CUDA emulator"],
+      "description": "A teaching emulator that runs CUDA C programs on the CPU, explains memory errors and data races with the source line and GPU thread, and writes a visualization of every run.",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "GPU programming education",
+      "operatingSystem": "macOS, Linux",
+      "url": "https://mukhunyeledzi-muthuphei.github.io/wits-cuda-emulator/",
+      "downloadUrl": "https://github.com/Mukhunyeledzi-Muthuphei/wits-cuda-emulator",
+      "screenshot": "https://mukhunyeledzi-muthuphei.github.io/wits-cuda-emulator/assets/viewer-out-of-bounds.png",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "author": { "@type": "Person", "name": "Mukhunyeledzi Muthuphei", "url": "https://github.com/Mukhunyeledzi-Muthuphei" }
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "wits-cuda-emulator",
+      "codeRepository": "https://github.com/Mukhunyeledzi-Muthuphei/wits-cuda-emulator",
+      "programmingLanguage": ["C", "CUDA"],
+      "runtimePlatform": "clang"
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Can I run CUDA code without an NVIDIA GPU?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. WCU translates CUDA C into plain C and runs every GPU thread on your CPU, so CUDA programs build and run on any Mac or Linux machine with clang and make. It is built for learning and debugging, not for speed." }
+        },
+        {
+          "@type": "Question",
+          "name": "Does WCU work on Apple Silicon Macs?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. WCU needs only clang and make, which come with the Xcode command-line tools (xcode-select --install). It runs on Intel and Apple Silicon Macs and on Linux." }
+        },
+        {
+          "@type": "Question",
+          "name": "Which CUDA mistakes does WCU detect?",
+          "acceptedAnswer": { "@type": "Answer", "text": "While the program runs: out-of-bounds reads and writes, reads of uninitialized device memory, data races between GPU threads, host pointers passed to kernels, device pointers used on the host, use-after-free, double free, memcpy direction and size mistakes, partial coverage from rounded-down block counts, memory leaks and unchecked errors. At compile time: host functions called from kernels, kernels called without <<< >>>, threadIdx in host code and kernels that return a value." }
+        },
+        {
+          "@type": "Question",
+          "name": "Will code written for WCU run on a real GPU?",
+          "acceptedAnswer": { "@type": "Answer", "text": "That is the goal. Programs use ordinary CUDA C (__global__, <<<blocks, threads>>>, cudaMalloc, cudaMemcpy, threadIdx) and are meant to move to real hardware unchanged, as long as they stay within the supported subset." }
+        },
+        {
+          "@type": "Question",
+          "name": "Are WCU timings real?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Timings on a CPU would teach the wrong lessons, so WCU reports a simulated GPU clock that models CUDA start-up, PCIe copies, kernel launch overhead and memory transactions. The shape of the bars carries over to real hardware; the exact numbers do not." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can instructors use WCU to grade CUDA assignments?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. A program with errors exits with status 1, so assignments can be graded by running them, and the self-contained .wcu.html visualization can be attached to feedback. It opens offline." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+<style>
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --panel-2: #eef0f4;
+  --ink: #16181d;
+  --muted: #5a6170;
+  --line: #dde1e8;
+  --accent: #3b5bdb;
+  --accent-soft: #dbe4ff;
+  --warn: #b7791f;
+  --err: #d6336c;
+  --err-soft: #ffe0ec;
+  --ok: #2b8a3e;
+  --brand: #2f9e44;
+  --term-bg: #0d0f13;
+  --term-ink: #d5d9e2;
+  --term-dim: #7d8595;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161b;
+    --panel: #1b1e25;
+    --panel-2: #22262f;
+    --ink: #e8eaf0;
+    --muted: #9aa1b0;
+    --line: #2c313c;
+    --accent: #748ffc;
+    --accent-soft: #263050;
+    --warn: #f0b429;
+    --err: #ff6b9d;
+    --err-soft: #3d1a2a;
+    --ok: #51cf66;
+    --brand: #51cf66;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 17px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); }
+code, pre, kbd { font-family: var(--mono); font-size: 0.9em; }
+:not(pre) > code { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 0.05em 0.35em; white-space: nowrap; }
+img { max-width: 100%; height: auto; display: block; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 16px; top: 12px; z-index: 10; background: var(--panel); padding: 8px 12px; }
+
+/* header */
+.site-head {
+  position: sticky; top: 0; z-index: 5;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
+  -webkit-backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.site-head .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+.logo { font-family: "VT323", var(--mono); font-size: 28px; color: var(--brand); text-decoration: none; line-height: 1; white-space: nowrap; }
+.logo span { color: var(--muted); font-size: 20px; }
+.site-head nav { display: flex; gap: 20px; margin-left: auto; align-items: center; }
+.site-head nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
+.site-head nav a:hover { color: var(--ink); }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 16px;
+  text-decoration: none; border: 1px solid var(--line); color: var(--ink); background: var(--panel);
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--brand); border-color: var(--brand); color: #0b1a0f; }
+.btn.primary:hover { filter: brightness(1.08); }
+.site-head .btn { padding: 6px 12px; font-size: 14px; }
+@media (max-width: 760px) { .site-head nav a:not(.btn) { display: none; } }
+
+/* hero */
+.hero { padding: 72px 0 56px; }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 48px; align-items: center; }
+.eyebrow { font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--brand); margin: 0 0 16px; }
+h1 { font-size: clamp(36px, 5.2vw, 58px); line-height: 1.05; letter-spacing: -0.025em; margin: 0 0 20px; }
+.lede { font-size: 19px; color: var(--muted); margin: 0 0 28px; max-width: 34em; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; }
+.hero-note { font-size: 14px; color: var(--muted); margin-top: 18px; }
+@media (max-width: 900px) { .hero .wrap { grid-template-columns: minmax(0, 1fr); } .hero { padding-top: 48px; } }
+
+/* terminal */
+.term {
+  background: var(--term-bg); color: var(--term-ink);
+  border-radius: 12px; border: 1px solid #262a33;
+  box-shadow: 0 24px 60px -24px rgba(0,0,0,.45);
+  overflow: hidden;
+}
+.term-bar { display: flex; gap: 7px; padding: 12px 14px; border-bottom: 1px solid #1f232b; align-items: center; }
+.term-bar i { width: 11px; height: 11px; border-radius: 50%; background: #3a3f4a; display: block; }
+.term-bar b { font: 500 12px var(--mono); color: var(--term-dim); margin-left: 8px; }
+.term pre { margin: 0; padding: 16px 18px 20px; overflow-x: auto; font-size: 12.5px; line-height: 1.6; }
+.t-p { color: #51cf66; } .t-e { color: #ff6b9d; font-weight: 700; } .t-d { color: var(--term-dim); }
+.t-h { color: #f0b429; } .t-b { color: #748ffc; } .t-w { color: #fff; font-weight: 600; }
+
+/* sections */
+section { padding: 72px 0; }
+section.alt { background: var(--panel); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+h2 { font-size: clamp(28px, 3.4vw, 38px); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 14px; }
+h3 { font-size: 20px; margin: 0 0 8px; line-height: 1.3; }
+.section-lede { color: var(--muted); font-size: 18px; max-width: 44em; margin: 0 0 40px; }
+
+.pillars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
+section.alt .card { background: var(--bg); }
+.card p { margin: 0; color: var(--muted); }
+.card .num { font-family: "VT323", var(--mono); font-size: 30px; color: var(--brand); line-height: 1; display: block; margin-bottom: 10px; }
+@media (max-width: 860px) { .pillars { grid-template-columns: minmax(0, 1fr); } }
+
+/* demo */
+.shot { margin: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #14161b; }
+.shot figcaption { font-size: 14px; color: var(--muted); padding: 12px 16px; background: var(--panel); border-top: 1px solid var(--line); }
+.demo-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.demo-tabs button {
+  font: 500 14px var(--sans); padding: 8px 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+}
+.demo-tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.demo-links { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.demo-links a { display: block; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; text-decoration: none; color: var(--ink); background: var(--panel); }
+.demo-links a:hover { border-color: var(--accent); }
+.demo-links small { display: block; color: var(--muted); font-size: 13px; }
+.tag { font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .05em; padding: 2px 6px; border-radius: 4px; }
+.tag.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 15%, transparent); }
+.tag.err { color: var(--err); background: var(--err-soft); }
+@media (max-width: 860px) { .demo-links { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* quick start */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+@media (max-width: 860px) { .split { grid-template-columns: minmax(0, 1fr); } }
+.code { background: var(--term-bg); color: var(--term-ink); border-radius: 10px; padding: 16px 18px; overflow-x: auto; font-size: 14px; line-height: 1.65; margin: 0 0 16px; border: 1px solid #262a33; }
+.code .c { color: var(--term-dim); }
+.code .k { color: #c792ea; } .code .s { color: #f0b429; } .code .f { color: #82aaff; }
+ol.steps { padding-left: 1.2em; margin: 0; }
+ol.steps li { margin-bottom: 14px; }
+ol.steps li::marker { color: var(--brand); font-weight: 700; }
+
+/* tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--panel-2); }
+tr:last-child td { border-bottom: 0; }
+td code { white-space: nowrap; }
+
+.checks { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 32px; padding: 0; list-style: none; }
+.checks li { font: 13.5px var(--mono); padding: 5px 10px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); }
+section.alt .checks li { background: var(--bg); }
+
+.pipeline { font: 14px/1.5 var(--mono); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 32px; }
+.pipeline span { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); }
+.pipeline em { font-style: normal; color: var(--muted); font-size: 12.5px; }
+
+.limits li { margin-bottom: 8px; color: var(--muted); }
+.limits li strong { color: var(--ink); }
+
+/* faq */
+.faq details { border-bottom: 1px solid var(--line); padding: 18px 0; }
+.faq details:first-of-type { border-top: 1px solid var(--line); }
+.faq summary { cursor: pointer; font-weight: 600; font-size: 18px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; color: var(--muted); font-weight: 400; font-size: 22px; line-height: 1; }
+.faq details[open] summary::after { content: "−"; }
+.faq details p { margin: 12px 0 0; color: var(--muted); max-width: 48em; }
+
+.final { text-align: center; }
+.final .cta { justify-content: center; }
+
+footer { border-top: 1px solid var(--line); padding: 32px 0; font-size: 14px; color: var(--muted); }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; }
+footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="./" aria-label="WCU home">wcu <span>wits cuda emulator</span></a>
+    <nav aria-label="Main">
+      <a href="#features">Features</a>
+      <a href="#demo">Demo</a>
+      <a href="#get-started">Get started</a>
+      <a href="#checks">Checks</a>
+      <a href="#faq">FAQ</a>
+      <a class="btn" href="https://github.com/Mukhunyeledzi-Muthuphei/wits-cuda-emulator">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">CUDA emulator for learning GPU programming</p>
+      <h1 id="hero-title">Run and debug CUDA C without a GPU</h1>
+      <p class="lede">WCU runs CUDA programs on any Mac or Linux CPU. When a kernel writes out of bounds or two GPU threads race, it tells you the source line, the thread that did it, and how to fix it. Then it draws the whole run.</p>
+      <div class="cta">
+        <a class="btn primary" href="#get-started">Get started</a>
+        <a class="btn" href="demo/02_missing_bounds_check.html">Open a live demo →</a>
+      </div>
+      <p class="hero-note">Needs only <code>clang</code> and <code>make</code>. No NVIDIA drivers or CUDA toolkit.</p>
+    </div>
+
+    <div class="term" role="img" aria-label="Terminal output: wcu reports an out-of-bounds write in kernel vecAdd at line 14, caused by 24 extra GPU threads, and suggests adding if (i &lt; n).">
+      <div class="term-bar"><i></i><i></i><i></i><b>wcu run examples/02_missing_bounds_check.cu</b></div>
+<pre><span class="t-e">wcu error[out-of-bounds-write]</span><span class="t-w">: kernel `vecAdd` wrote past
+  the end of `c`</span>
+   <span class="t-b">--></span> examples/02_missing_bounds_check.cu:14
+   <span class="t-b">14 |</span> c[i] = a[i] + b[i];
+      <span class="t-d">= kernel</span>   `vecAdd`, launched at line 37
+      <span class="t-d">= memory</span>   `c` is the device array `d_c`:
+                 1,000 × float (3.9 KB)
+      <span class="t-d">= index</span>    1000 … 1023, valid indexes are 0 … 999
+      <span class="t-d">= first</span>    GPU thread #1,000: blockIdx.x = 3,
+                 threadIdx.x = 232
+      <span class="t-h">= hint</span>     1,024 GPU threads for 1,000 elements.
+                 Guard the work: <span class="t-p">if (i &lt; n) { ... }</span>
+
+<span class="t-d">── wcu run summary ─────────────────────────────</span>
+  kernels    1 launch, 1,024 GPU threads in 32 warps
+  time       80.22 ms simulated
+  problems   <span class="t-e">1 error</span>, 0 warnings</pre>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="alt" aria-labelledby="features-title">
+  <div class="wrap">
+    <h2 id="features-title">A GPU that explains itself</h2>
+    <p class="section-lede">WCU is slow on purpose. It exists so that blocks and threads, separate host and device memory, slow copies and races between threads can be seen, learned and debugged on a laptop.</p>
+    <div class="pillars">
+      <article class="card">
+        <span class="num">01</span>
+        <h3>Explains CUDA mistakes</h3>
+        <p>Out-of-bounds writes, host pointers passed to kernels, reads of memory nobody wrote, data races and rounded-down block counts. Each one is reported with the source line, the GPU thread, the array and a fix.</p>
+      </article>
+      <article class="card">
+        <span class="num">02</span>
+        <h3>Draws every run</h3>
+        <p>Each program writes a self-contained HTML page with a timeline, the grid of blocks and threads, and which thread read or wrote which element of which array, with the values.</p>
+      </article>
+      <article class="card">
+        <span class="num">03</span>
+        <h3>Simulates GPU time</h3>
+        <p>CPU timings would teach the wrong lessons, so WCU models what a GPU pays for: CUDA start-up, PCIe copies, launch overhead and memory transactions. You learn why small problems don't speed up.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="demo" aria-labelledby="demo-title">
+  <div class="wrap">
+    <h2 id="demo-title">See which GPU thread did it</h2>
+    <p class="section-lede">These are real visualizations from the bundled examples. Every run produces one, and it opens offline.</p>
+
+    <div class="demo-tabs" role="tablist" aria-label="Visualization screenshots">
+      <button role="tab" aria-selected="true" aria-controls="shot-oob" id="tab-oob">Out-of-bounds write</button>
+      <button role="tab" aria-selected="false" aria-controls="shot-race" id="tab-race">Data race</button>
+    </div>
+    <figure class="shot" id="shot-oob" role="tabpanel" aria-labelledby="tab-oob">
+      <img src="assets/viewer-out-of-bounds.png" width="1440" height="900" loading="lazy" decoding="async"
+           alt="WCU visualizer for a missing bounds check: 1,024 GPU threads in four blocks, with the last 24 threads of block 3 highlighted as illegal accesses and the error details below">
+      <figcaption>A missing <code>if (i &lt; n)</code>: the last 24 threads of block 3 wrote past the end of the array.</figcaption>
+    </figure>
+    <figure class="shot" id="shot-race" role="tabpanel" aria-labelledby="tab-race" hidden>
+      <img src="assets/viewer-data-race.png" width="1440" height="900" loading="lazy" decoding="async"
+           alt="WCU visualizer for a data race: nearly every GPU thread highlighted because all of them write sum[0]">
+      <figcaption>Every thread updates <code>sum[0]</code>. WCU flags the race even when the answer happens to come out right.</figcaption>
+    </figure>
+
+    <div class="demo-links">
+      <a href="demo/01_vector_add.html"><span class="tag ok">correct</span> Vector add<small>The CUDA “hello world”</small></a>
+      <a href="demo/02_missing_bounds_check.html"><span class="tag err">bug</span> No bounds check<small>1,024 threads, 1,000 elements</small></a>
+      <a href="demo/05_race_condition.html"><span class="tag err">bug</span> Race condition<small>Every thread writes <code>sum[0]</code></small></a>
+      <a href="demo/06_grayscale_2d.html"><span class="tag ok">correct</span> Grayscale image<small>2D grid of 2D blocks</small></a>
+    </div>
+  </div>
+</section>
+
+<section id="get-started" class="alt" aria-labelledby="start-title">
+  <div class="wrap split">
+    <div>
+      <h2 id="start-title">Get started in a minute</h2>
+      <p class="section-lede" style="margin-bottom:24px">WCU runs on macOS (Intel and Apple Silicon) and Linux. On a Mac, install the compiler with <code>xcode-select --install</code>.</p>
+      <ol class="steps">
+        <li><strong>Clone and build</strong> the translator and runtime with <code>make</code>.</li>
+        <li><strong>Run an example</strong> with <code>--open</code> to see the visualization in your browser.</li>
+        <li><strong>Add <code>bin</code> to your <code>PATH</code></strong> to use <code>wcu</code>, and the <code>nvcc</code> stand-in, from anywhere.</li>
+      </ol>
+    </div>
+    <div>
+<pre class="code"><span class="c"># build</span>
+git clone https://github.com/Mukhunyeledzi-Muthuphei/wits-cuda-emulator.git
+cd wits-cuda-emulator
+make
+
+<span class="c"># run a CUDA program and open the visualization</span>
+bin/wcu run --open examples/01_vector_add.cu
+
+<span class="c"># other commands</span>
+wcu build file.cu -o program
+wcu translate file.cu      <span class="c"># show the generated C</span></pre>
+<pre class="code"><span class="k">__global__</span> <span class="k">void</span> <span class="f">vecAdd</span>(<span class="k">const float</span> *a, <span class="k">const float</span> *b, <span class="k">float</span> *c, <span class="k">int</span> n)
+{
+    <span class="k">int</span> i = blockIdx.x * blockDim.x + threadIdx.x;
+    <span class="k">if</span> (i &lt; n) c[i] = a[i] + b[i];
+}
+
+<span class="f">vecAdd</span>&lt;&lt;&lt;numBlocks, threadsPerBlock&gt;&gt;&gt;(d_a, d_b, d_c, N);</pre>
+    </div>
+  </div>
+</section>
+
+<section id="examples" aria-labelledby="examples-title">
+  <div class="wrap">
+    <h2 id="examples-title">12 examples, built around real student mistakes</h2>
+    <p class="section-lede">Each one is a small, complete CUDA program. The buggy ones are the mistakes people actually make when learning GPU programming.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">File</th><th scope="col">What it shows</th></tr></thead>
+        <tbody>
+          <tr><td><code>01_vector_add.cu</code></td><td>A correct program, end to end</td></tr>
+          <tr><td><code>02_missing_bounds_check.cu</code></td><td>No <code>if (i &lt; n)</code>: 1,024 threads, 1,000 elements</td></tr>
+          <tr><td><code>03_host_pointer_in_kernel.cu</code></td><td>Passing <code>a</code> (host) instead of <code>d_a</code> (device)</td></tr>
+          <tr><td><code>04_forgot_to_copy.cu</code></td><td>A kernel reading device memory nobody filled</td></tr>
+          <tr><td><code>05_race_condition.cu</code></td><td>Every thread updating <code>sum[0]</code></td></tr>
+          <tr><td><code>06_grayscale_2d.cu</code></td><td>A correct 2D grid of 2D blocks</td></tr>
+          <tr><td><code>07_device_pointer_on_host.cu</code></td><td>The CPU reading GPU memory directly</td></tr>
+          <tr><td><code>08_block_count_rounding.cu</code></td><td><code>N / threadsPerBlock</code> silently dropping the tail</td></tr>
+          <tr><td><code>09_bytes_not_elements.cu</code></td><td><code>cudaMemcpy</code> counting bytes, not elements</td></tr>
+          <tr><td><code>10_host_function_in_kernel.cu</code></td><td>Mistakes caught before the program runs</td></tr>
+          <tr><td><code>11_atomic_sum.cu</code></td><td>The fix for 05, using <code>atomicAdd</code></td></tr>
+          <tr><td><code>12_coalescing.cu</code></td><td>Warps: the same work, done twice, with 32× the memory traffic</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="checks" class="alt" aria-labelledby="checks-title">
+  <div class="wrap">
+    <h2 id="checks-title">What WCU checks</h2>
+    <p class="section-lede">Runtime errors are reported with the source line and GPU thread. A program with errors exits with status 1.</p>
+    <h3>While the program runs</h3>
+    <ul class="checks">
+      <li>out-of-bounds-write</li><li>out-of-bounds-read</li><li>uninitialized-read</li><li>data-race</li>
+      <li>host-memory-in-kernel</li><li>device-pointer-on-host</li><li>use-after-free</li><li>null-pointer</li>
+      <li>partial-coverage</li><li>invalid-configuration</li><li>memcpy-swapped</li><li>memcpy-wrong-side</li>
+      <li>memcpy-overflow</li><li>memcpy-partial</li><li>memcpy-uninitialized</li><li>double-free</li>
+      <li>free-host-pointer</li><li>out-of-memory</li><li>device-error-state</li><li>memory-leak</li>
+      <li>unchecked-error</li><li>uncoalesced-access</li>
+    </ul>
+    <h3>At compile time, as nvcc would</h3>
+    <ul class="checks">
+      <li>host function called from a kernel</li><li>kernel called without &lt;&lt;&lt; &gt;&gt;&gt;</li>
+      <li>threadIdx in host code</li><li>kernel returning non-void</li><li>kernel launching a kernel</li>
+    </ul>
+  </div>
+</section>
+
+<section id="how-it-works" aria-labelledby="how-title">
+  <div class="wrap">
+    <h2 id="how-title">How it works</h2>
+    <p class="section-lede">WCU translates CUDA C into plain C, compiles it with clang and links it against an emulated GPU runtime. Line numbers are preserved, so compiler errors point into your <code>.cu</code> file.</p>
+    <div class="pipeline" aria-label="Pipeline: your .cu file, translated by wcu-translate to plain C, compiled by clang into a program, linked with libwcu.a">
+      <span>your.cu</span><em>wcu-translate →</em><span>plain C</span><em>clang →</em><span>program</span><em>links →</em><span>libwcu.a</span>
+    </div>
+    <div class="pillars">
+      <article class="card">
+        <h3>Checked memory access</h3>
+        <p><code>&lt;&lt;&lt; &gt;&gt;&gt;</code> becomes a loop over GPU threads, and every <code>a[i]</code>, <code>*p</code> and <code>p-&gt;x</code> in kernel code becomes a checked access.</p>
+      </article>
+      <article class="card">
+        <h3>Separate device memory</h3>
+        <p>Device pointers live in a reserved, unreadable region, so touching one from the CPU is caught and explained. Every byte records whether anything wrote it.</p>
+      </article>
+      <article class="card">
+        <h3>Warps and shuffling</h3>
+        <p>Threads run in warps of 32, and the warps are shuffled like real scheduling. Code whose result depends on the order is exposed, not hidden.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="clock" class="alt" aria-labelledby="clock-title">
+  <div class="wrap split">
+    <div>
+      <h2 id="clock-title">The simulated GPU clock</h2>
+      <p class="section-lede">Times in the summary and the visualization come from a model, not from your CPU. The lesson that carries over to real hardware is the shape of the bars: copies and start-up dominate small problems, and kernels only pay off when there is enough work.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Quantity</th><th scope="col">Value</th></tr></thead>
+        <tbody>
+          <tr><td>CUDA start-up (first call)</td><td>80 ms</td></tr>
+          <tr><td>Kernel launch overhead</td><td>0.02 ms</td></tr>
+          <tr><td>Warp size</td><td>32 threads</td></tr>
+          <tr><td>Memory transaction</td><td>128 bytes, 0.25 ns each</td></tr>
+          <tr><td>Instruction issued to one warp</td><td>20 ns</td></tr>
+          <tr><td>Host ⇄ device copy</td><td>6 GB/s (12 GB/s pinned)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="instructors" aria-labelledby="instructors-title">
+  <div class="wrap split">
+    <div>
+      <h2 id="instructors-title">Built for GPU programming courses</h2>
+      <p class="section-lede">Every student can run CUDA assignments on their own laptop, without lab machines or cloud GPUs.</p>
+      <ol class="steps">
+        <li><strong>Grade by exit status.</strong> Programs with errors exit with status 1.</li>
+        <li><strong>Attach the <code>.wcu.html</code> page to feedback.</strong> It is a single file that opens offline.</li>
+        <li><strong>Add your own checks.</strong> <code>make test</code> runs every example against expected output.</li>
+      </ol>
+    </div>
+    <div>
+      <h3>Current limits</h3>
+      <ul class="limits">
+        <li><strong><code>__shared__</code> memory and <code>__syncthreads()</code></strong> are not supported yet, which rules out tiled matrix multiply.</li>
+        <li><strong>Branch divergence</strong> is not modelled; warps are modelled for memory only.</li>
+        <li><strong>Not included:</strong> streams, events, unified memory, textures, dynamic parallelism, cuBLAS, cuRAND, Thrust.</li>
+        <li><strong>C only:</strong> no C++ in <code>.cu</code> files.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="alt faq" aria-labelledby="faq-title">
+  <div class="wrap">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <details open>
+      <summary>Can I run CUDA code without an NVIDIA GPU?</summary>
+      <p>Yes. WCU translates CUDA C into plain C and runs every GPU thread on your CPU, so CUDA programs build and run on any Mac or Linux machine with clang and make. It is built for learning and debugging, not for speed.</p>
+    </details>
+    <details>
+      <summary>Does WCU work on Apple Silicon Macs?</summary>
+      <p>Yes. WCU needs only clang and make, which come with the Xcode command-line tools (<code>xcode-select --install</code>). It runs on Intel and Apple Silicon Macs and on Linux.</p>
+    </details>
+    <details>
+      <summary>Which CUDA mistakes does WCU detect?</summary>
+      <p>While the program runs: out-of-bounds reads and writes, reads of uninitialized device memory, data races between GPU threads, host pointers passed to kernels, device pointers used on the host, use-after-free, double free, memcpy direction and size mistakes, partial coverage from rounded-down block counts, memory leaks and unchecked errors. At compile time: host functions called from kernels, kernels called without <code>&lt;&lt;&lt; &gt;&gt;&gt;</code>, <code>threadIdx</code> in host code and kernels that return a value.</p>
+    </details>
+    <details>
+      <summary>Will code written for WCU run on a real GPU?</summary>
+      <p>That is the goal. Programs use ordinary CUDA C (<code>__global__</code>, <code>&lt;&lt;&lt;blocks, threads&gt;&gt;&gt;</code>, <code>cudaMalloc</code>, <code>cudaMemcpy</code>, <code>threadIdx</code>) and are meant to move to real hardware unchanged, as long as they stay within the supported subset.</p>
+    </details>
+    <details>
+      <summary>Are WCU timings real?</summary>
+      <p>No. Timings on a CPU would teach the wrong lessons, so WCU reports a simulated GPU clock that models CUDA start-up, PCIe copies, kernel launch overhead and memory transactions. The shape of the bars carries over to real hardware; the exact numbers do not.</p>
+    </details>
+    <details>
+      <summary>Can instructors use WCU to grade CUDA assignments?</summary>
+      <p>Yes. A program with errors exits with status 1, so assignments can be graded by running them, and the self-contained <code>.wcu.html</code> visualization can be attached to feedback. It opens offline.</p>
+    </details>
+  </div>
+</section>
+
+<section class="final" aria-labelledby="final-title">
+  <div class="wrap">
+    <h2 id="final-title">Start learning CUDA on the machine you already have</h2>
+    <p class="section-lede" style="margin:0 auto 28px">Clone the repository, run <code>make</code>, and open your first visualization.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/Mukhunyeledzi-Muthuphei/wits-cuda-emulator">View on GitHub</a>
+      <a class="btn" href="demo/01_vector_add.html">Try the vector-add demo</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>WCU — the Wits CUDA emulator · <a href="https://github.com/Mukhunyeledzi-Muthuphei/wits-cuda-emulator">Source on GitHub</a></p>
+    <p>A teaching tool. Not affiliated with or endorsed by NVIDIA. CUDA is a trademark of NVIDIA Corporation.</p>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll('.demo-tabs [role="tab"]').forEach(function (tab) {
+  tab.addEventListener('click', function () {
+    document.querySelectorAll('.demo-tabs [role="tab"]').forEach(function (t) {
+      var on = t === tab;
+      t.setAttribute('aria-selected', on);
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+  });
+});
+</script>
+</body>
+</html>

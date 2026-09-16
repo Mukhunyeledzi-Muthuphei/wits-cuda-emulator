@@ -17,10 +17,13 @@ $(BUILD)/libwcu.a: $(BUILD)/runtime.o
 $(BUILD):
 	mkdir -p $@
 
+site: all
+	@bash docs/build-demos.sh
+
 test: all
 	@bash tests/run.sh
 
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all test clean
+.PHONY: all test clean site

@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="en">
+<head><meta name="robots" content="noindex">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wits CUDA Emulator</title>
+<style>
+/* VT323 by Peter Hull (SIL Open Font License 1.1), embedded so the page works offline. */
+@font-face {
+  font-family: 'VT323';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(data:font/woff2;base64,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) format('woff2');
+}
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --panel-2: #f0f2f5;
+  --ink: #16181d;
+  --ink-2: #5a6272;
+  --line: #dde1e8;
+  --accent: #3b5bdb;
+  --accent-soft: #dbe4ff;
+  --read: #74c0fc;
+  --write: #3b5bdb;
+  --idle: #d7dce5;
+  --warn: #e8a317;
+  --warn-soft: #fff3d6;
+  --err: #d6336c;
+  --err-soft: #ffe0ec;
+  --ok: #2b8a3e;
+  --brand: #2f9e44;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161b;
+    --panel: #1b1e25;
+    --panel-2: #22262f;
+    --ink: #e8eaf0;
+    --ink-2: #9aa3b5;
+    --line: #2c313c;
+    --accent: #748ffc;
+    --accent-soft: #263050;
+    --read: #4a7ba8;
+    --write: #748ffc;
+    --idle: #343a46;
+    --warn: #f0b429;
+    --warn-soft: #3a2f11;
+    --err: #ff6b9d;
+    --err-soft: #3d1a2a;
+    --ok: #51cf66;
+    --brand: #51cf66;
+  }
+}
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+h1, h2, h3 { font-weight: 600; margin: 0; }
+code, .mono { font-family: var(--mono); }
+
+/* The name panel is a little CRT terminal, in both themes. */
+.brandpane {
+  position: relative; overflow: hidden; padding: 16px 16px 14px;
+  background: #060a07; border-bottom: 1px solid var(--line);
+}
+.brandpane::after {           /* scanlines */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(180deg, rgba(0, 0, 0, .30) 0 1px, transparent 1px 3px);
+}
+.brandname {
+  font-family: 'VT323', 'Andale Mono', Monaco, 'Courier New', monospace;
+  font-size: 32px; line-height: 1.02; letter-spacing: .04em; color: #3dff74;
+  text-shadow: 0 0 6px rgba(61, 255, 116, .55), 0 0 20px rgba(61, 255, 116, .25);
+}
+.prog {
+  font-family: 'VT323', 'Andale Mono', Monaco, 'Courier New', monospace;
+  font-size: 18px; line-height: 1.2; margin-top: 8px; color: #9dffbc;
+  text-shadow: 0 0 5px rgba(61, 255, 116, .35);
+}
+.prog span { color: #3f8a5c; }
+.badge {
+  font-size: 12px; padding: 2px 9px; border-radius: 999px;
+  background: var(--panel-2); color: var(--ink-2); border: 1px solid var(--line);
+}
+.badge.err { background: var(--err-soft); color: var(--err); border-color: transparent; }
+.badge.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.badge.ok { background: transparent; color: var(--ok); border-color: var(--ok); }
+
+.badges { display: flex; flex-wrap: wrap; gap: 6px; }
+
+main { display: grid; grid-template-columns: minmax(260px, 320px) 1fr; gap: 0; height: 100%; overflow: hidden; }
+aside, #detail { height: 100%; overflow-y: auto; }
+@media (max-width: 860px) {
+  html, body, #app, main { height: auto; }
+  main { grid-template-columns: 1fr; overflow: visible; }
+  aside, #detail { height: auto; overflow: visible; }
+}
+
+aside { border-right: 1px solid var(--line); background: var(--panel); }
+section.pane { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.pane h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); margin-bottom: 10px; }
+
+/* timeline */
+.lanes { font-size: 11px; }
+.lane { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 8px; margin-bottom: 4px; }
+.lane .name { color: var(--ink-2); text-align: right; }
+.track { position: relative; height: 16px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.bar { position: absolute; top: 2px; bottom: 2px; min-width: 2px; border-radius: 2px; background: var(--accent); cursor: pointer; }
+.bar.copy { background: var(--read); }
+.bar.kernel { background: var(--ok); }
+.bar.bad { background: var(--err); }
+.bar.wait { background: repeating-linear-gradient(45deg, var(--idle), var(--idle) 3px, transparent 3px, transparent 6px); }
+.bar.sel { outline: 2px solid var(--ink); outline-offset: 1px; }
+.axis { display: flex; justify-content: space-between; color: var(--ink-2); margin-top: 2px; }
+label.toggle { display: flex; gap: 6px; align-items: center; margin-top: 8px; color: var(--ink-2); font-size: 12px; }
+
+/* steps */
+.step {
+  display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: baseline;
+  padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.step:hover { background: var(--panel-2); }
+.step.sel { background: var(--accent-soft); }
+.step .icon { font-size: 11px; color: var(--ink-2); text-align: center; }
+.step .what { font-family: var(--mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step .t { font-size: 11px; color: var(--ink-2); font-family: var(--mono); }
+.step.bad .what { color: var(--err); }
+
+/* problems */
+.prob { padding: 8px; border-radius: 6px; cursor: pointer; margin-bottom: 6px; border-left: 3px solid var(--err); background: var(--err-soft); }
+.prob.warning { border-color: var(--warn); background: var(--warn-soft); }
+.prob .code { font-size: 11px; font-family: var(--mono); opacity: .8; }
+.prob .title { font-size: 12.5px; }
+
+/* detail */
+#detail { min-width: 0; padding: 0; display: flex; flex-direction: column; }
+.primary .card { border: none; background: transparent; padding: 0; margin-bottom: 20px; }
+.primary .card > h3 { font-family: var(--mono); font-size: 15px; }
+#detail > div { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.primary { flex: 1; overflow-y: auto; padding: 18px 22px 24px; min-height: 0; }
+.bottom { display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--panel); min-height: 90px; }
+.grabber { height: 6px; margin-top: -6px; cursor: row-resize; }
+.grabber:hover { background: var(--accent-soft); }
+.tabbar { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tab {
+  padding: 7px 12px; font-size: 12px; white-space: nowrap; cursor: pointer;
+  color: var(--ink-2); border-bottom: 2px solid transparent;
+}
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+.tabbody { flex: 1; overflow-y: auto; padding: 14px 18px 24px; min-height: 0; }
+.tabbody .card { border: none; background: transparent; padding: 0; margin-bottom: 18px; }
+@media (max-width: 860px) {
+  .primary, .tabbody { overflow: visible; }
+  .bottom { height: auto !important; }
+}
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.card > h3 { font-size: 13px; margin-bottom: 4px; }
+.sub { color: var(--ink-2); font-size: 12.5px; }
+.kv { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 10px; font-size: 12.5px; }
+.kv div span { color: var(--ink-2); }
+.note { background: var(--panel-2); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: var(--ink-2); margin-top: 12px; }
+
+/* thread grid */
+.blocks { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.block { border: 1px solid var(--line); border-radius: 6px; padding: 5px; background: var(--panel-2); }
+.block .bl { font-size: 10px; color: var(--ink-2); font-family: var(--mono); margin-bottom: 3px; }
+.threads { display: grid; gap: 1px; }
+.th { width: 9px; height: 9px; border-radius: 1.5px; background: var(--idle); }
+.th.r { background: var(--read); }
+.th.w { background: var(--write); }
+.th.race { background: var(--warn); }
+.th.err { background: var(--err); }
+.th.pending { opacity: .18; }
+.th.warpstart { box-shadow: inset 2px 0 0 var(--ink-2); }
+.th.warphl { outline: 1px solid var(--ink-2); outline-offset: 0; }
+.th.pin { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 2; position: relative; }
+.th.unrec { background: repeating-linear-gradient(45deg, var(--idle), var(--idle) 2px, transparent 2px, transparent 4px); }
+.th.hl { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 2; position: relative; }
+.big .th { width: 13px; height: 13px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink-2); margin-top: 12px; }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+/* memory strips */
+.strip { margin-top: 14px; }
+.strip .hdr { display: flex; justify-content: space-between; font-size: 12px; font-family: var(--mono); margin-bottom: 4px; }
+.cells { display: flex; flex-wrap: wrap; gap: 1px; }
+.cell {
+  min-width: 10px; height: 14px; background: var(--idle); border-radius: 1.5px;
+  font-size: 9px; font-family: var(--mono); color: #fff; text-align: center; line-height: 14px; overflow: hidden;
+}
+.cell.wide { min-width: 42px; padding: 0 3px; }
+.cell.untouched { background: var(--idle); }
+.cell.read { background: var(--read); }
+.cell.written { background: var(--write); }
+.cell.race { background: var(--warn); }
+.cell.oob { background: var(--err); }
+.cell.uninit { background: transparent; border: 1px dashed var(--err); color: var(--err); }
+.cell.pending { opacity: .18; }
+.cell.hl { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+/* source */
+pre.src { margin: 0; overflow-x: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; }
+pre.src .ln { color: var(--ink-2); user-select: none; }
+pre.src .hi { background: var(--accent-soft); display: block; }
+pre.src .bad { background: var(--err-soft); display: block; }
+
+button {
+  font: inherit; font-size: 12.5px; padding: 4px 12px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.arrow { font-size: 26px; color: var(--ink-2); }
+.copyviz { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.side { flex: 1 1 200px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.side .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+#drop { padding: 60px; text-align: center; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const TRACE = {"version":1,"program":"05_race_condition","cwd":"wits-cuda-emulator","status":"ok","order":"shuffle","seed":1,"model":{"warpSize":32,"warpsResident":64,"txnBytes":128,"nsPerTxn":0.25,"nsPerIssue":20,"cpuNsPerOp":0.4,"launchMs":0.02,"contextInitMs":80,"pageableGBps":6,"pinnedGBps":12,"latencyMs":0.01,"maxThreadsPerBlock":1024,"deviceBytes":4294967296},"totals":{"hostMs":80.1847,"endMs":80.1847,"kernelMs":0.02006,"h2dMs":0.0206833,"d2hMs":0.0100007,"waitMs":0.01406,"launches":1,"threads":1024,"peakBytes":4100,"errors":1,"warnings":0,"eventsDropped":0},"events":[{"type":"context","line":0,"file":null,"t0":0,"t1":80},
+{"type":"malloc","line":28,"file":"examples/05_race_condition.cu","name":"d_a","bytes":4096,"ok":true,"alloc":1,"t0":80,"t1":80.05},
+{"type":"malloc","line":29,"file":"examples/05_race_condition.cu","name":"d_sum","bytes":4,"ok":true,"alloc":2,"t0":80.05,"t1":80.1},
+{"type":"memcpy","line":30,"file":"examples/05_race_condition.cu","kind":"HostToDevice","ok":true,"bytes":4096,"pinned":false,"dst":"d_a","src":"a","dstAlloc":1,"srcAlloc":-1,"tHost":80.1,"t0":80.1,"t1":80.1107,"snap":{"alloc":1,"data":"AQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAA==","init":"//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8="}},
+{"type":"memcpy","line":32,"file":"examples/05_race_condition.cu","kind":"HostToDevice","ok":true,"bytes":4,"pinned":false,"dst":"d_sum","src":"zero","dstAlloc":2,"srcAlloc":-1,"tHost":80.1107,"t0":80.1107,"t1":80.1207,"snap":{"alloc":2,"data":"AAAAAA==","init":"Dw=="}},
+{"type":"launch","line":34,"file":"examples/05_race_condition.cu","id":1,"kernel":"total","grid":[4,1,1],"block":[256,1,1],"ok":true,"reason":"","threads":1024,"tHost":80.1207,"t0":80.1207,"t1":80.1407,"opsMax":3,"opsTotal":3075,"cpuMs":0.00123,"recLimit":65536,"kfirst":15,"klast":20,"recDropped":0,"warpSize":32,"warps":32,"txn":64,"txnIdeal":64,"sites":[{"line":19,"alloc":1,"txn":32,"ideal":32,"lanes":1024,"warps":32},{"line":19,"alloc":2,"txn":32,"ideal":32,"lanes":1024,"warps":32}],"acc":[448,1,448,1,19,448,2,0,3,19,449,1,449,1,19,449,2,0,19,19,450,1,450,1,19,450,2,0,19,19,451,1,451,1,19,451,2,0,19,19,452,1,452,1,19,452,2,0,19,19,453,1,453,1,19,453,2,0,19,19,454,1,454,1,19,454,2,0,19,19,455,1,455,1,19,455,2,0,19,19,456,1,456,1,19,456,2,0,19,19,457,1,457,1,19,457,2,0,19,19,458,1,458,1,19,458,2,0,19,19,459,1,459,1,19,459,2,0,19,19,460,1,460,1,19,460,2,0,19,19,461,1,461,1,19,461,2,0,19,19,462,1,462,1,19,462,2,0,19,19,463,1,463,1,19,463,2,0,19,19,464,1,464,1,19,464,2,0,19,19,465,1,465,1,19,465,2,0,19,19,466,1,466,1,19,466,2,0,19,19,467,1,467,1,19,467,2,0,19,19,468,1,468,1,19,468,2,0,19,19,469,1,469,1,19,469,2,0,19,19,470,1,470,1,19,470,2,0,19,19,471,1,471,1,19,471,2,0,19,19,472,1,472,1,19,472,2,0,19,19,473,1,473,1,19,473,2,0,19,19,474,1,474,1,19,474,2,0,19,19,475,1,475,1,19,475,2,0,19,19,476,1,476,1,19,476,2,0,19,19,477,1,477,1,19,477,2,0,19,19,478,1,478,1,19,478,2,0,19,19,479,1,479,1,19,479,2,0,19,19,384,1,384,1,19,384,2,0,19,19,385,1,385,1,19,385,2,0,19,19,386,1,386,1,19,386,2,0,19,19,387,1,387,1,19,387,2,0,19,19,388,1,388,1,19,388,2,0,19,19,389,1,389,1,19,389,2,0,19,19,390,1,390,1,19,390,2,0,19,19,391,1,391,1,19,391,2,0,19,19,392,1,392,1,19,392,2,0,19,19,393,1,393,1,19,393,2,0,19,19,394,1,394,1,19,394,2,0,19,19,395,1,395,1,19,395,2,0,19,19,396,1,396,1,19,396,2,0,19,19,397,1,397,1,19,397,2,0,19,19,398,1,398,1,19,398,2,0,19,19,399,1,399,1,19,399,2,0,19,19,400,1,400,1,19,400,2,0,19,19,401,1,401,1,19,401,2,0,19,19,402,1,402,1,19,402,2,0,19,19,403,1,403,1,19,403,2,0,19,19,404,1,404,1,19,404,2,0,19,19,405,1,405,1,19,405,2,0,19,19,406,1,406,1,19,406,2,0,19,19,407,1,407,1,19,407,2,0,19,19,408,1,408,1,19,408,2,0,19,19,409,1,409,1,19,409,2,0,19,19,410,1,410,1,19,410,2,0,19,19,411,1,411,1,19,411,2,0,19,19,412,1,412,1,19,412,2,0,19,19,413,1,413,1,19,413,2,0,19,19,414,1,414,1,19,414,2,0,19,19,415,1,415,1,19,415,2,0,19,19,128,1,128,1,19,128,2,0,19,19,129,1,129,1,19,129,2,0,19,19,130,1,130,1,19,130,2,0,19,19,131,1,131,1,19,131,2,0,19,19,132,1,132,1,19,132,2,0,19,19,133,1,133,1,19,133,2,0,19,19,134,1,134,1,19,134,2,0,19,19,135,1,135,1,19,135,2,0,19,19,136,1,136,1,19,136,2,0,19,19,137,1,137,1,19,137,2,0,19,19,138,1,138,1,19,138,2,0,19,19,139,1,139,1,19,139,2,0,19,19,140,1,140,1,19,140,2,0,19,19,141,1,141,1,19,141,2,0,19,19,142,1,142,1,19,142,2,0,19,19,143,1,143,1,19,143,2,0,19,19,144,1,144,1,19,144,2,0,19,19,145,1,145,1,19,145,2,0,19,19,146,1,146,1,19,146,2,0,19,19,147,1,147,1,19,147,2,0,19,19,148,1,148,1,19,148,2,0,19,19,149,1,149,1,19,149,2,0,19,19,150,1,150,1,19,150,2,0,19,19,151,1,151,1,19,151,2,0,19,19,152,1,152,1,19,152,2,0,19,19,153,1,153,1,19,153,2,0,19,19,154,1,154,1,19,154,2,0,19,19,155,1,155,1,19,155,2,0,19,19,156,1,156,1,19,156,2,0,19,19,157,1,157,1,19,157,2,0,19,19,158,1,158,1,19,158,2,0,19,19,159,1,159,1,19,159,2,0,19,19,544,1,544,1,19,544,2,0,19,19,545,1,545,1,19,545,2,0,19,19,546,1,546,1,19,546,2,0,19,19,547,1,547,1,19,547,2,0,19,19,548,1,548,1,19,548,2,0,19,19,549,1,549,1,19,549,2,0,19,19,550,1,550,1,19,550,2,0,19,19,551,1,551,1,19,551,2,0,19,19,552,1,552,1,19,552,2,0,19,19,553,1,553,1,19,553,2,0,19,19,554,1,554,1,19,554,2,0,19,19,555,1,555,1,19,555,2,0,19,19,556,1,556,1,19,556,2,0,19,19,557,1,557,1,19,557,2,0,19,19,558,1,558,1,19,558,2,0,19,19,559,1,559,1,19,559,2,0,19,19,560,1,560,1,19,560,2,0,19,19,561,1,561,1,19,561,2,0,19,19,562,1,562,1,19,562,2,0,19,19,563,1,563,1,19,563,2,0,19,19,564,1,564,1,19,564,2,0,19,19,565,1,565,1,19,565,2,0,19,19,566,1,566,1,19,566,2,0,19,19,567,1,567,1,19,567,2,0,19,19,568,1,568,1,19,568,2,0,19,19,569,1,569,1,19,569,2,0,19,19,570,1,570,1,19,570,2,0,19,19,571,1,571,1,19,571,2,0,19,19,572,1,572,1,19,572,2,0,19,19,573,1,573,1,19,573,2,0,19,19,574,1,574,1,19,574,2,0,19,19,575,1,575,1,19,575,2,0,19,19,416,1,416,1,19,416,2,0,19,19,417,1,417,1,19,417,2,0,19,19,418,1,418,1,19,418,2,0,19,19,419,1,419,1,19,419,2,0,19,19,420,1,420,1,19,420,2,0,19,19,421,1,421,1,19,421,2,0,19,19,422,1,422,1,19,422,2,0,19,19,423,1,423,1,19,423,2,0,19,19,424,1,424,1,19,424,2,0,19,19,425,1,425,1,19,425,2,0,19,19,426,1,426,1,19,426,2,0,19,19,427,1,427,1,19,427,2,0,19,19,428,1,428,1,19,428,2,0,19,19,429,1,429,1,19,429,2,0,19,19,430,1,430,1,19,430,2,0,19,19,431,1,431,1,19,431,2,0,19,19,432,1,432,1,19,432,2,0,19,19,433,1,433,1,19,433,2,0,19,19,434,1,434,1,19,434,2,0,19,19,435,1,435,1,19,435,2,0,19,19,436,1,436,1,19,436,2,0,19,19,437,1,437,1,19,437,2,0,19,19,438,1,438,1,19,438,2,0,19,19,439,1,439,1,19,439,2,0,19,19,440,1,440,1,19,440,2,0,19,19,441,1,441,1,19,441,2,0,19,19,442,1,442,1,19,442,2,0,19,19,443,1,443,1,19,443,2,0,19,19,444,1,444,1,19,444,2,0,19,19,445,1,445,1,19,445,2,0,19,19,446,1,446,1,19,446,2,0,19,19,447,1,447,1,19,447,2,0,19,19,672,1,672,1,19,672,2,0,19,19,673,1,673,1,19,673,2,0,19,19,674,1,674,1,19,674,2,0,19,19,675,1,675,1,19,675,2,0,19,19,676,1,676,1,19,676,2,0,19,19,677,1,677,1,19,677,2,0,19,19,678,1,678,1,19,678,2,0,19,19,679,1,679,1,19,679,2,0,19,19,680,1,680,1,19,680,2,0,19,19,681,1,681,1,19,681,2,0,19,19,682,1,682,1,19,682,2,0,19,19,683,1,683,1,19,683,2,0,19,19,684,1,684,1,19,684,2,0,19,19,685,1,685,1,19,685,2,0,19,19,686,1,686,1,19,686,2,0,19,19,687,1,687,1,19,687,2,0,19,19,688,1,688,1,19,688,2,0,19,19,689,1,689,1,19,689,2,0,19,19,690,1,690,1,19,690,2,0,19,19,691,1,691,1,19,691,2,0,19,19,692,1,692,1,19,692,2,0,19,19,693,1,693,1,19,693,2,0,19,19,694,1,694,1,19,694,2,0,19,19,695,1,695,1,19,695,2,0,19,19,696,1,696,1,19,696,2,0,19,19,697,1,697,1,19,697,2,0,19,19,698,1,698,1,19,698,2,0,19,19,699,1,699,1,19,699,2,0,19,19,700,1,700,1,19,700,2,0,19,19,701,1,701,1,19,701,2,0,19,19,702,1,702,1,19,702,2,0,19,19,703,1,703,1,19,703,2,0,19,19,608,1,608,1,19,608,2,0,19,19,609,1,609,1,19,609,2,0,19,19,610,1,610,1,19,610,2,0,19,19,611,1,611,1,19,611,2,0,19,19,612,1,612,1,19,612,2,0,19,19,613,1,613,1,19,613,2,0,19,19,614,1,614,1,19,614,2,0,19,19,615,1,615,1,19,615,2,0,19,19,616,1,616,1,19,616,2,0,19,19,617,1,617,1,19,617,2,0,19,19,618,1,618,1,19,618,2,0,19,19,619,1,619,1,19,619,2,0,19,19,620,1,620,1,19,620,2,0,19,19,621,1,621,1,19,621,2,0,19,19,622,1,622,1,19,622,2,0,19,19,623,1,623,1,19,623,2,0,19,19,624,1,624,1,19,624,2,0,19,19,625,1,625,1,19,625,2,0,19,19,626,1,626,1,19,626,2,0,19,19,627,1,627,1,19,627,2,0,19,19,628,1,628,1,19,628,2,0,19,19,629,1,629,1,19,629,2,0,19,19,630,1,630,1,19,630,2,0,19,19,631,1,631,1,19,631,2,0,19,19,632,1,632,1,19,632,2,0,19,19,633,1,633,1,19,633,2,0,19,19,634,1,634,1,19,634,2,0,19,19,635,1,635,1,19,635,2,0,19,19,636,1,636,1,19,636,2,0,19,19,637,1,637,1,19,637,2,0,19,19,638,1,638,1,19,638,2,0,19,19,639,1,639,1,19,639,2,0,19,19,640,1,640,1,19,640,2,0,19,19,641,1,641,1,19,641,2,0,19,19,642,1,642,1,19,642,2,0,19,19,643,1,643,1,19,643,2,0,19,19,644,1,644,1,19,644,2,0,19,19,645,1,645,1,19,645,2,0,19,19,646,1,646,1,19,646,2,0,19,19,647,1,647,1,19,647,2,0,19,19,648,1,648,1,19,648,2,0,19,19,649,1,649,1,19,649,2,0,19,19,650,1,650,1,19,650,2,0,19,19,651,1,651,1,19,651,2,0,19,19,652,1,652,1,19,652,2,0,19,19,653,1,653,1,19,653,2,0,19,19,654,1,654,1,19,654,2,0,19,19,655,1,655,1,19,655,2,0,19,19,656,1,656,1,19,656,2,0,19,19,657,1,657,1,19,657,2,0,19,19,658,1,658,1,19,658,2,0,19,19,659,1,659,1,19,659,2,0,19,19,660,1,660,1,19,660,2,0,19,19,661,1,661,1,19,661,2,0,19,19,662,1,662,1,19,662,2,0,19,19,663,1,663,1,19,663,2,0,19,19,664,1,664,1,19,664,2,0,19,19,665,1,665,1,19,665,2,0,19,19,666,1,666,1,19,666,2,0,19,19,667,1,667,1,19,667,2,0,19,19,668,1,668,1,19,668,2,0,19,19,669,1,669,1,19,669,2,0,19,19,670,1,670,1,19,670,2,0,19,19,671,1,671,1,19,671,2,0,19,19,864,1,864,1,19,864,2,0,19,19,865,1,865,1,19,865,2,0,19,19,866,1,866,1,19,866,2,0,19,19,867,1,867,1,19,867,2,0,19,19,868,1,868,1,19,868,2,0,19,19,869,1,869,1,19,869,2,0,19,19,870,1,870,1,19,870,2,0,19,19,871,1,871,1,19,871,2,0,19,19,872,1,872,1,19,872,2,0,19,19,873,1,873,1,19,873,2,0,19,19,874,1,874,1,19,874,2,0,19,19,875,1,875,1,19,875,2,0,19,19,876,1,876,1,19,876,2,0,19,19,877,1,877,1,19,877,2,0,19,19,878,1,878,1,19,878,2,0,19,19,879,1,879,1,19,879,2,0,19,19,880,1,880,1,19,880,2,0,19,19,881,1,881,1,19,881,2,0,19,19,882,1,882,1,19,882,2,0,19,19,883,1,883,1,19,883,2,0,19,19,884,1,884,1,19,884,2,0,19,19,885,1,885,1,19,885,2,0,19,19,886,1,886,1,19,886,2,0,19,19,887,1,887,1,19,887,2,0,19,19,888,1,888,1,19,888,2,0,19,19,889,1,889,1,19,889,2,0,19,19,890,1,890,1,19,890,2,0,19,19,891,1,891,1,19,891,2,0,19,19,892,1,892,1,19,892,2,0,19,19,893,1,893,1,19,893,2,0,19,19,894,1,894,1,19,894,2,0,19,19,895,1,895,1,19,895,2,0,19,19,992,1,992,1,19,992,2,0,19,19,993,1,993,1,19,993,2,0,19,19,994,1,994,1,19,994,2,0,19,19,995,1,995,1,19,995,2,0,19,19,996,1,996,1,19,996,2,0,19,19,997,1,997,1,19,997,2,0,19,19,998,1,998,1,19,998,2,0,19,19,999,1,999,1,19,999,2,0,19,19,1000,1,1000,1,19,1000,2,0,19,19,1001,1,1001,1,19,1001,2,0,19,19,1002,1,1002,1,19,1002,2,0,19,19,1003,1,1003,1,19,1003,2,0,19,19,1004,1,1004,1,19,1004,2,0,19,19,1005,1,1005,1,19,1005,2,0,19,19,1006,1,1006,1,19,1006,2,0,19,19,1007,1,1007,1,19,1007,2,0,19,19,1008,1,1008,1,19,1008,2,0,19,19,1009,1,1009,1,19,1009,2,0,19,19,1010,1,1010,1,19,1010,2,0,19,19,1011,1,1011,1,19,1011,2,0,19,19,1012,1,1012,1,19,1012,2,0,19,19,1013,1,1013,1,19,1013,2,0,19,19,1014,1,1014,1,19,1014,2,0,19,19,1015,1,1015,1,19,1015,2,0,19,19,1016,1,1016,1,19,1016,2,0,19,19,1017,1,1017,1,19,1017,2,0,19,19,1018,1,1018,1,19,1018,2,0,19,19,1019,1,1019,1,19,1019,2,0,19,19,1020,1,1020,1,19,1020,2,0,19,19,1021,1,1021,1,19,1021,2,0,19,19,1022,1,1022,1,19,1022,2,0,19,19,1023,1,1023,1,19,1023,2,0,19,19,64,1,64,1,19,64,2,0,19,19,65,1,65,1,19,65,2,0,19,19,66,1,66,1,19,66,2,0,19,19,67,1,67,1,19,67,2,0,19,19,68,1,68,1,19,68,2,0,19,19,69,1,69,1,19,69,2,0,19,19,70,1,70,1,19,70,2,0,19,19,71,1,71,1,19,71,2,0,19,19,72,1,72,1,19,72,2,0,19,19,73,1,73,1,19,73,2,0,19,19,74,1,74,1,19,74,2,0,19,19,75,1,75,1,19,75,2,0,19,19,76,1,76,1,19,76,2,0,19,19,77,1,77,1,19,77,2,0,19,19,78,1,78,1,19,78,2,0,19,19,79,1,79,1,19,79,2,0,19,19,80,1,80,1,19,80,2,0,19,19,81,1,81,1,19,81,2,0,19,19,82,1,82,1,19,82,2,0,19,19,83,1,83,1,19,83,2,0,19,19,84,1,84,1,19,84,2,0,19,19,85,1,85,1,19,85,2,0,19,19,86,1,86,1,19,86,2,0,19,19,87,1,87,1,19,87,2,0,19,19,88,1,88,1,19,88,2,0,19,19,89,1,89,1,19,89,2,0,19,19,90,1,90,1,19,90,2,0,19,19,91,1,91,1,19,91,2,0,19,19,92,1,92,1,19,92,2,0,19,19,93,1,93,1,19,93,2,0,19,19,94,1,94,1,19,94,2,0,19,19,95,1,95,1,19,95,2,0,19,19,576,1,576,1,19,576,2,0,19,19,577,1,577,1,19,577,2,0,19,19,578,1,578,1,19,578,2,0,19,19,579,1,579,1,19,579,2,0,19,19,580,1,580,1,19,580,2,0,19,19,581,1,581,1,19,581,2,0,19,19,582,1,582,1,19,582,2,0,19,19,583,1,583,1,19,583,2,0,19,19,584,1,584,1,19,584,2,0,19,19,585,1,585,1,19,585,2,0,19,19,586,1,586,1,19,586,2,0,19,19,587,1,587,1,19,587,2,0,19,19,588,1,588,1,19,588,2,0,19,19,589,1,589,1,19,589,2,0,19,19,590,1,590,1,19,590,2,0,19,19,591,1,591,1,19,591,2,0,19,19,592,1,592,1,19,592,2,0,19,19,593,1,593,1,19,593,2,0,19,19,594,1,594,1,19,594,2,0,19,19,595,1,595,1,19,595,2,0,19,19,596,1,596,1,19,596,2,0,19,19,597,1,597,1,19,597,2,0,19,19,598,1,598,1,19,598,2,0,19,19,599,1,599,1,19,599,2,0,19,19,600,1,600,1,19,600,2,0,19,19,601,1,601,1,19,601,2,0,19,19,602,1,602,1,19,602,2,0,19,19,603,1,603,1,19,603,2,0,19,19,604,1,604,1,19,604,2,0,19,19,605,1,605,1,19,605,2,0,19,19,606,1,606,1,19,606,2,0,19,19,607,1,607,1,19,607,2,0,19,19,160,1,160,1,19,160,2,0,19,19,161,1,161,1,19,161,2,0,19,19,162,1,162,1,19,162,2,0,19,19,163,1,163,1,19,163,2,0,19,19,164,1,164,1,19,164,2,0,19,19,165,1,165,1,19,165,2,0,19,19,166,1,166,1,19,166,2,0,19,19,167,1,167,1,19,167,2,0,19,19,168,1,168,1,19,168,2,0,19,19,169,1,169,1,19,169,2,0,19,19,170,1,170,1,19,170,2,0,19,19,171,1,171,1,19,171,2,0,19,19,172,1,172,1,19,172,2,0,19,19,173,1,173,1,19,173,2,0,19,19,174,1,174,1,19,174,2,0,19,19,175,1,175,1,19,175,2,0,19,19,176,1,176,1,19,176,2,0,19,19,177,1,177,1,19,177,2,0,19,19,178,1,178,1,19,178,2,0,19,19,179,1,179,1,19,179,2,0,19,19,180,1,180,1,19,180,2,0,19,19,181,1,181,1,19,181,2,0,19,19,182,1,182,1,19,182,2,0,19,19,183,1,183,1,19,183,2,0,19,19,184,1,184,1,19,184,2,0,19,19,185,1,185,1,19,185,2,0,19,19,186,1,186,1,19,186,2,0,19,19,187,1,187,1,19,187,2,0,19,19,188,1,188,1,19,188,2,0,19,19,189,1,189,1,19,189,2,0,19,19,190,1,190,1,19,190,2,0,19,19,191,1,191,1,19,191,2,0,19,19,320,1,320,1,19,320,2,0,19,19,321,1,321,1,19,321,2,0,19,19,322,1,322,1,19,322,2,0,19,19,323,1,323,1,19,323,2,0,19,19,324,1,324,1,19,324,2,0,19,19,325,1,325,1,19,325,2,0,19,19,326,1,326,1,19,326,2,0,19,19,327,1,327,1,19,327,2,0,19,19,328,1,328,1,19,328,2,0,19,19,329,1,329,1,19,329,2,0,19,19,330,1,330,1,19,330,2,0,19,19,331,1,331,1,19,331,2,0,19,19,332,1,332,1,19,332,2,0,19,19,333,1,333,1,19,333,2,0,19,19,334,1,334,1,19,334,2,0,19,19,335,1,335,1,19,335,2,0,19,19,336,1,336,1,19,336,2,0,19,19,337,1,337,1,19,337,2,0,19,19,338,1,338,1,19,338,2,0,19,19,339,1,339,1,19,339,2,0,19,19,340,1,340,1,19,340,2,0,19,19,341,1,341,1,19,341,2,0,19,19,342,1,342,1,19,342,2,0,19,19,343,1,343,1,19,343,2,0,19,19,344,1,344,1,19,344,2,0,19,19,345,1,345,1,19,345,2,0,19,19,346,1,346,1,19,346,2,0,19,19,347,1,347,1,19,347,2,0,19,19,348,1,348,1,19,348,2,0,19,19,349,1,349,1,19,349,2,0,19,19,350,1,350,1,19,350,2,0,19,19,351,1,351,1,19,351,2,0,19,19,736,1,736,1,19,736,2,0,19,19,737,1,737,1,19,737,2,0,19,19,738,1,738,1,19,738,2,0,19,19,739,1,739,1,19,739,2,0,19,19,740,1,740,1,19,740,2,0,19,19,741,1,741,1,19,741,2,0,19,19,742,1,742,1,19,742,2,0,19,19,743,1,743,1,19,743,2,0,19,19,744,1,744,1,19,744,2,0,19,19,745,1,745,1,19,745,2,0,19,19,746,1,746,1,19,746,2,0,19,19,747,1,747,1,19,747,2,0,19,19,748,1,748,1,19,748,2,0,19,19,749,1,749,1,19,749,2,0,19,19,750,1,750,1,19,750,2,0,19,19,751,1,751,1,19,751,2,0,19,19,752,1,752,1,19,752,2,0,19,19,753,1,753,1,19,753,2,0,19,19,754,1,754,1,19,754,2,0,19,19,755,1,755,1,19,755,2,0,19,19,756,1,756,1,19,756,2,0,19,19,757,1,757,1,19,757,2,0,19,19,758,1,758,1,19,758,2,0,19,19,759,1,759,1,19,759,2,0,19,19,760,1,760,1,19,760,2,0,19,19,761,1,761,1,19,761,2,0,19,19,762,1,762,1,19,762,2,0,19,19,763,1,763,1,19,763,2,0,19,19,764,1,764,1,19,764,2,0,19,19,765,1,765,1,19,765,2,0,19,19,766,1,766,1,19,766,2,0,19,19,767,1,767,1,19,767,2,0,19,19,192,1,192,1,19,192,2,0,19,19,193,1,193,1,19,193,2,0,19,19,194,1,194,1,19,194,2,0,19,19,195,1,195,1,19,195,2,0,19,19,196,1,196,1,19,196,2,0,19,19,197,1,197,1,19,197,2,0,19,19,198,1,198,1,19,198,2,0,19,19,199,1,199,1,19,199,2,0,19,19,200,1,200,1,19,200,2,0,19,19,201,1,201,1,19,201,2,0,19,19,202,1,202,1,19,202,2,0,19,19,203,1,203,1,19,203,2,0,19,19,204,1,204,1,19,204,2,0,19,19,205,1,205,1,19,205,2,0,19,19,206,1,206,1,19,206,2,0,19,19,207,1,207,1,19,207,2,0,19,19,208,1,208,1,19,208,2,0,19,19,209,1,209,1,19,209,2,0,19,19,210,1,210,1,19,210,2,0,19,19,211,1,211,1,19,211,2,0,19,19,212,1,212,1,19,212,2,0,19,19,213,1,213,1,19,213,2,0,19,19,214,1,214,1,19,214,2,0,19,19,215,1,215,1,19,215,2,0,19,19,216,1,216,1,19,216,2,0,19,19,217,1,217,1,19,217,2,0,19,19,218,1,218,1,19,218,2,0,19,19,219,1,219,1,19,219,2,0,19,19,220,1,220,1,19,220,2,0,19,19,221,1,221,1,19,221,2,0,19,19,222,1,222,1,19,222,2,0,19,19,223,1,223,1,19,223,2,0,19,19,928,1,928,1,19,928,2,0,19,19,929,1,929,1,19,929,2,0,19,19,930,1,930,1,19,930,2,0,19,19,931,1,931,1,19,931,2,0,19,19,932,1,932,1,19,932,2,0,19,19,933,1,933,1,19,933,2,0,19,19,934,1,934,1,19,934,2,0,19,19,935,1,935,1,19,935,2,0,19,19,936,1,936,1,19,936,2,0,19,19,937,1,937,1,19,937,2,0,19,19,938,1,938,1,19,938,2,0,19,19,939,1,939,1,19,939,2,0,19,19,940,1,940,1,19,940,2,0,19,19,941,1,941,1,19,941,2,0,19,19,942,1,942,1,19,942,2,0,19,19,943,1,943,1,19,943,2,0,19,19,944,1,944,1,19,944,2,0,19,19,945,1,945,1,19,945,2,0,19,19,946,1,946,1,19,946,2,0,19,19,947,1,947,1,19,947,2,0,19,19,948,1,948,1,19,948,2,0,19,19,949,1,949,1,19,949,2,0,19,19,950,1,950,1,19,950,2,0,19,19,951,1,951,1,19,951,2,0,19,19,952,1,952,1,19,952,2,0,19,19,953,1,953,1,19,953,2,0,19,19,954,1,954,1,19,954,2,0,19,19,955,1,955,1,19,955,2,0,19,19,956,1,956,1,19,956,2,0,19,19,957,1,957,1,19,957,2,0,19,19,958,1,958,1,19,958,2,0,19,19,959,1,959,1,19,959,2,0,19,19,512,1,512,1,19,512,2,0,19,19,513,1,513,1,19,513,2,0,19,19,514,1,514,1,19,514,2,0,19,19,515,1,515,1,19,515,2,0,19,19,516,1,516,1,19,516,2,0,19,19,517,1,517,1,19,517,2,0,19,19,518,1,518,1,19,518,2,0,19,19,519,1,519,1,19,519,2,0,19,19,520,1,520,1,19,520,2,0,19,19,521,1,521,1,19,521,2,0,19,19,522,1,522,1,19,522,2,0,19,19,523,1,523,1,19,523,2,0,19,19,524,1,524,1,19,524,2,0,19,19,525,1,525,1,19,525,2,0,19,19,526,1,526,1,19,526,2,0,19,19,527,1,527,1,19,527,2,0,19,19,528,1,528,1,19,528,2,0,19,19,529,1,529,1,19,529,2,0,19,19,530,1,530,1,19,530,2,0,19,19,531,1,531,1,19,531,2,0,19,19,532,1,532,1,19,532,2,0,19,19,533,1,533,1,19,533,2,0,19,19,534,1,534,1,19,534,2,0,19,19,535,1,535,1,19,535,2,0,19,19,536,1,536,1,19,536,2,0,19,19,537,1,537,1,19,537,2,0,19,19,538,1,538,1,19,538,2,0,19,19,539,1,539,1,19,539,2,0,19,19,540,1,540,1,19,540,2,0,19,19,541,1,541,1,19,541,2,0,19,19,542,1,542,1,19,542,2,0,19,19,543,1,543,1,19,543,2,0,19,19,96,1,96,1,19,96,2,0,19,19,97,1,97,1,19,97,2,0,19,19,98,1,98,1,19,98,2,0,19,19,99,1,99,1,19,99,2,0,19,19,100,1,100,1,19,100,2,0,19,19,101,1,101,1,19,101,2,0,19,19,102,1,102,1,19,102,2,0,19,19,103,1,103,1,19,103,2,0,19,19,104,1,104,1,19,104,2,0,19,19,105,1,105,1,19,105,2,0,19,19,106,1,106,1,19,106,2,0,19,19,107,1,107,1,19,107,2,0,19,19,108,1,108,1,19,108,2,0,19,19,109,1,109,1,19,109,2,0,19,19,110,1,110,1,19,110,2,0,19,19,111,1,111,1,19,111,2,0,19,19,112,1,112,1,19,112,2,0,19,19,113,1,113,1,19,113,2,0,19,19,114,1,114,1,19,114,2,0,19,19,115,1,115,1,19,115,2,0,19,19,116,1,116,1,19,116,2,0,19,19,117,1,117,1,19,117,2,0,19,19,118,1,118,1,19,118,2,0,19,19,119,1,119,1,19,119,2,0,19,19,120,1,120,1,19,120,2,0,19,19,121,1,121,1,19,121,2,0,19,19,122,1,122,1,19,122,2,0,19,19,123,1,123,1,19,123,2,0,19,19,124,1,124,1,19,124,2,0,19,19,125,1,125,1,19,125,2,0,19,19,126,1,126,1,19,126,2,0,19,19,127,1,127,1,19,127,2,0,19,19,32,1,32,1,19,32,2,0,19,19,33,1,33,1,19,33,2,0,19,19,34,1,34,1,19,34,2,0,19,19,35,1,35,1,19,35,2,0,19,19,36,1,36,1,19,36,2,0,19,19,37,1,37,1,19,37,2,0,19,19,38,1,38,1,19,38,2,0,19,19,39,1,39,1,19,39,2,0,19,19,40,1,40,1,19,40,2,0,19,19,41,1,41,1,19,41,2,0,19,19,42,1,42,1,19,42,2,0,19,19,43,1,43,1,19,43,2,0,19,19,44,1,44,1,19,44,2,0,19,19,45,1,45,1,19,45,2,0,19,19,46,1,46,1,19,46,2,0,19,19,47,1,47,1,19,47,2,0,19,19,48,1,48,1,19,48,2,0,19,19,49,1,49,1,19,49,2,0,19,19,50,1,50,1,19,50,2,0,19,19,51,1,51,1,19,51,2,0,19,19,52,1,52,1,19,52,2,0,19,19,53,1,53,1,19,53,2,0,19,19,54,1,54,1,19,54,2,0,19,19,55,1,55,1,19,55,2,0,19,19,56,1,56,1,19,56,2,0,19,19,57,1,57,1,19,57,2,0,19,19,58,1,58,1,19,58,2,0,19,19,59,1,59,1,19,59,2,0,19,19,60,1,60,1,19,60,2,0,19,19,61,1,61,1,19,61,2,0,19,19,62,1,62,1,19,62,2,0,19,19,63,1,63,1,19,63,2,0,19,19,832,1,832,1,19,832,2,0,19,19,833,1,833,1,19,833,2,0,19,19,834,1,834,1,19,834,2,0,19,19,835,1,835,1,19,835,2,0,19,19,836,1,836,1,19,836,2,0,19,19,837,1,837,1,19,837,2,0,19,19,838,1,838,1,19,838,2,0,19,19,839,1,839,1,19,839,2,0,19,19,840,1,840,1,19,840,2,0,19,19,841,1,841,1,19,841,2,0,19,19,842,1,842,1,19,842,2,0,19,19,843,1,843,1,19,843,2,0,19,19,844,1,844,1,19,844,2,0,19,19,845,1,845,1,19,845,2,0,19,19,846,1,846,1,19,846,2,0,19,19,847,1,847,1,19,847,2,0,19,19,848,1,848,1,19,848,2,0,19,19,849,1,849,1,19,849,2,0,19,19,850,1,850,1,19,850,2,0,19,19,851,1,851,1,19,851,2,0,19,19,852,1,852,1,19,852,2,0,19,19,853,1,853,1,19,853,2,0,19,19,854,1,854,1,19,854,2,0,19,19,855,1,855,1,19,855,2,0,19,19,856,1,856,1,19,856,2,0,19,19,857,1,857,1,19,857,2,0,19,19,858,1,858,1,19,858,2,0,19,19,859,1,859,1,19,859,2,0,19,19,860,1,860,1,19,860,2,0,19,19,861,1,861,1,19,861,2,0,19,19,862,1,862,1,19,862,2,0,19,19,863,1,863,1,19,863,2,0,19,19,352,1,352,1,19,352,2,0,19,19,353,1,353,1,19,353,2,0,19,19,354,1,354,1,19,354,2,0,19,19,355,1,355,1,19,355,2,0,19,19,356,1,356,1,19,356,2,0,19,19,357,1,357,1,19,357,2,0,19,19,358,1,358,1,19,358,2,0,19,19,359,1,359,1,19,359,2,0,19,19,360,1,360,1,19,360,2,0,19,19,361,1,361,1,19,361,2,0,19,19,362,1,362,1,19,362,2,0,19,19,363,1,363,1,19,363,2,0,19,19,364,1,364,1,19,364,2,0,19,19,365,1,365,1,19,365,2,0,19,19,366,1,366,1,19,366,2,0,19,19,367,1,367,1,19,367,2,0,19,19,368,1,368,1,19,368,2,0,19,19,369,1,369,1,19,369,2,0,19,19,370,1,370,1,19,370,2,0,19,19,371,1,371,1,19,371,2,0,19,19,372,1,372,1,19,372,2,0,19,19,373,1,373,1,19,373,2,0,19,19,374,1,374,1,19,374,2,0,19,19,375,1,375,1,19,375,2,0,19,19,376,1,376,1,19,376,2,0,19,19,377,1,377,1,19,377,2,0,19,19,378,1,378,1,19,378,2,0,19,19,379,1,379,1,19,379,2,0,19,19,380,1,380,1,19,380,2,0,19,19,381,1,381,1,19,381,2,0,19,19,382,1,382,1,19,382,2,0,19,19,383,1,383,1,19,383,2,0,19,19,288,1,288,1,19,288,2,0,19,19,289,1,289,1,19,289,2,0,19,19,290,1,290,1,19,290,2,0,19,19,291,1,291,1,19,291,2,0,19,19,292,1,292,1,19,292,2,0,19,19,293,1,293,1,19,293,2,0,19,19,294,1,294,1,19,294,2,0,19,19,295,1,295,1,19,295,2,0,19,19,296,1,296,1,19,296,2,0,19,19,297,1,297,1,19,297,2,0,19,19,298,1,298,1,19,298,2,0,19,19,299,1,299,1,19,299,2,0,19,19,300,1,300,1,19,300,2,0,19,19,301,1,301,1,19,301,2,0,19,19,302,1,302,1,19,302,2,0,19,19,303,1,303,1,19,303,2,0,19,19,304,1,304,1,19,304,2,0,19,19,305,1,305,1,19,305,2,0,19,19,306,1,306,1,19,306,2,0,19,19,307,1,307,1,19,307,2,0,19,19,308,1,308,1,19,308,2,0,19,19,309,1,309,1,19,309,2,0,19,19,310,1,310,1,19,310,2,0,19,19,311,1,311,1,19,311,2,0,19,19,312,1,312,1,19,312,2,0,19,19,313,1,313,1,19,313,2,0,19,19,314,1,314,1,19,314,2,0,19,19,315,1,315,1,19,315,2,0,19,19,316,1,316,1,19,316,2,0,19,19,317,1,317,1,19,317,2,0,19,19,318,1,318,1,19,318,2,0,19,19,319,1,319,1,19,319,2,0,19,19,0,1,0,1,19,0,2,0,19,19,1,1,1,1,19,1,2,0,19,19,2,1,2,1,19,2,2,0,19,19,3,1,3,1,19,3,2,0,19,19,4,1,4,1,19,4,2,0,19,19,5,1,5,1,19,5,2,0,19,19,6,1,6,1,19,6,2,0,19,19,7,1,7,1,19,7,2,0,19,19,8,1,8,1,19,8,2,0,19,19,9,1,9,1,19,9,2,0,19,19,10,1,10,1,19,10,2,0,19,19,11,1,11,1,19,11,2,0,19,19,12,1,12,1,19,12,2,0,19,19,13,1,13,1,19,13,2,0,19,19,14,1,14,1,19,14,2,0,19,19,15,1,15,1,19,15,2,0,19,19,16,1,16,1,19,16,2,0,19,19,17,1,17,1,19,17,2,0,19,19,18,1,18,1,19,18,2,0,19,19,19,1,19,1,19,19,2,0,19,19,20,1,20,1,19,20,2,0,19,19,21,1,21,1,19,21,2,0,19,19,22,1,22,1,19,22,2,0,19,19,23,1,23,1,19,23,2,0,19,19,24,1,24,1,19,24,2,0,19,19,25,1,25,1,19,25,2,0,19,19,26,1,26,1,19,26,2,0,19,19,27,1,27,1,19,27,2,0,19,19,28,1,28,1,19,28,2,0,19,19,29,1,29,1,19,29,2,0,19,19,30,1,30,1,19,30,2,0,19,19,31,1,31,1,19,31,2,0,19,19,960,1,960,1,19,960,2,0,19,19,961,1,961,1,19,961,2,0,19,19,962,1,962,1,19,962,2,0,19,19,963,1,963,1,19,963,2,0,19,19,964,1,964,1,19,964,2,0,19,19,965,1,965,1,19,965,2,0,19,19,966,1,966,1,19,966,2,0,19,19,967,1,967,1,19,967,2,0,19,19,968,1,968,1,19,968,2,0,19,19,969,1,969,1,19,969,2,0,19,19,970,1,970,1,19,970,2,0,19,19,971,1,971,1,19,971,2,0,19,19,972,1,972,1,19,972,2,0,19,19,973,1,973,1,19,973,2,0,19,19,974,1,974,1,19,974,2,0,19,19,975,1,975,1,19,975,2,0,19,19,976,1,976,1,19,976,2,0,19,19,977,1,977,1,19,977,2,0,19,19,978,1,978,1,19,978,2,0,19,19,979,1,979,1,19,979,2,0,19,19,980,1,980,1,19,980,2,0,19,19,981,1,981,1,19,981,2,0,19,19,982,1,982,1,19,982,2,0,19,19,983,1,983,1,19,983,2,0,19,19,984,1,984,1,19,984,2,0,19,19,985,1,985,1,19,985,2,0,19,19,986,1,986,1,19,986,2,0,19,19,987,1,987,1,19,987,2,0,19,19,988,1,988,1,19,988,2,0,19,19,989,1,989,1,19,989,2,0,19,19,990,1,990,1,19,990,2,0,19,19,991,1,991,1,19,991,2,0,19,19,800,1,800,1,19,800,2,0,19,19,801,1,801,1,19,801,2,0,19,19,802,1,802,1,19,802,2,0,19,19,803,1,803,1,19,803,2,0,19,19,804,1,804,1,19,804,2,0,19,19,805,1,805,1,19,805,2,0,19,19,806,1,806,1,19,806,2,0,19,19,807,1,807,1,19,807,2,0,19,19,808,1,808,1,19,808,2,0,19,19,809,1,809,1,19,809,2,0,19,19,810,1,810,1,19,810,2,0,19,19,811,1,811,1,19,811,2,0,19,19,812,1,812,1,19,812,2,0,19,19,813,1,813,1,19,813,2,0,19,19,814,1,814,1,19,814,2,0,19,19,815,1,815,1,19,815,2,0,19,19,816,1,816,1,19,816,2,0,19,19,817,1,817,1,19,817,2,0,19,19,818,1,818,1,19,818,2,0,19,19,819,1,819,1,19,819,2,0,19,19,820,1,820,1,19,820,2,0,19,19,821,1,821,1,19,821,2,0,19,19,822,1,822,1,19,822,2,0,19,19,823,1,823,1,19,823,2,0,19,19,824,1,824,1,19,824,2,0,19,19,825,1,825,1,19,825,2,0,19,19,826,1,826,1,19,826,2,0,19,19,827,1,827,1,19,827,2,0,19,19,828,1,828,1,19,828,2,0,19,19,829,1,829,1,19,829,2,0,19,19,830,1,830,1,19,830,2,0,19,19,831,1,831,1,19,831,2,0,19,19,480,1,480,1,19,480,2,0,19,19,481,1,481,1,19,481,2,0,19,19,482,1,482,1,19,482,2,0,19,19,483,1,483,1,19,483,2,0,19,19,484,1,484,1,19,484,2,0,19,19,485,1,485,1,19,485,2,0,19,19,486,1,486,1,19,486,2,0,19,19,487,1,487,1,19,487,2,0,19,19,488,1,488,1,19,488,2,0,19,19,489,1,489,1,19,489,2,0,19,19,490,1,490,1,19,490,2,0,19,19,491,1,491,1,19,491,2,0,19,19,492,1,492,1,19,492,2,0,19,19,493,1,493,1,19,493,2,0,19,19,494,1,494,1,19,494,2,0,19,19,495,1,495,1,19,495,2,0,19,19,496,1,496,1,19,496,2,0,19,19,497,1,497,1,19,497,2,0,19,19,498,1,498,1,19,498,2,0,19,19,499,1,499,1,19,499,2,0,19,19,500,1,500,1,19,500,2,0,19,19,501,1,501,1,19,501,2,0,19,19,502,1,502,1,19,502,2,0,19,19,503,1,503,1,19,503,2,0,19,19,504,1,504,1,19,504,2,0,19,19,505,1,505,1,19,505,2,0,19,19,506,1,506,1,19,506,2,0,19,19,507,1,507,1,19,507,2,0,19,19,508,1,508,1,19,508,2,0,19,19,509,1,509,1,19,509,2,0,19,19,510,1,510,1,19,510,2,0,19,19,511,1,511,1,19,511,2,0,19,19,768,1,768,1,19,768,2,0,19,19,769,1,769,1,19,769,2,0,19,19,770,1,770,1,19,770,2,0,19,19,771,1,771,1,19,771,2,0,19,19,772,1,772,1,19,772,2,0,19,19,773,1,773,1,19,773,2,0,19,19,774,1,774,1,19,774,2,0,19,19,775,1,775,1,19,775,2,0,19,19,776,1,776,1,19,776,2,0,19,19,777,1,777,1,19,777,2,0,19,19,778,1,778,1,19,778,2,0,19,19,779,1,779,1,19,779,2,0,19,19,780,1,780,1,19,780,2,0,19,19,781,1,781,1,19,781,2,0,19,19,782,1,782,1,19,782,2,0,19,19,783,1,783,1,19,783,2,0,19,19,784,1,784,1,19,784,2,0,19,19,785,1,785,1,19,785,2,0,19,19,786,1,786,1,19,786,2,0,19,19,787,1,787,1,19,787,2,0,19,19,788,1,788,1,19,788,2,0,19,19,789,1,789,1,19,789,2,0,19,19,790,1,790,1,19,790,2,0,19,19,791,1,791,1,19,791,2,0,19,19,792,1,792,1,19,792,2,0,19,19,793,1,793,1,19,793,2,0,19,19,794,1,794,1,19,794,2,0,19,19,795,1,795,1,19,795,2,0,19,19,796,1,796,1,19,796,2,0,19,19,797,1,797,1,19,797,2,0,19,19,798,1,798,1,19,798,2,0,19,19,799,1,799,1,19,799,2,0,19,19,224,1,224,1,19,224,2,0,19,19,225,1,225,1,19,225,2,0,19,19,226,1,226,1,19,226,2,0,19,19,227,1,227,1,19,227,2,0,19,19,228,1,228,1,19,228,2,0,19,19,229,1,229,1,19,229,2,0,19,19,230,1,230,1,19,230,2,0,19,19,231,1,231,1,19,231,2,0,19,19,232,1,232,1,19,232,2,0,19,19,233,1,233,1,19,233,2,0,19,19,234,1,234,1,19,234,2,0,19,19,235,1,235,1,19,235,2,0,19,19,236,1,236,1,19,236,2,0,19,19,237,1,237,1,19,237,2,0,19,19,238,1,238,1,19,238,2,0,19,19,239,1,239,1,19,239,2,0,19,19,240,1,240,1,19,240,2,0,19,19,241,1,241,1,19,241,2,0,19,19,242,1,242,1,19,242,2,0,19,19,243,1,243,1,19,243,2,0,19,19,244,1,244,1,19,244,2,0,19,19,245,1,245,1,19,245,2,0,19,19,246,1,246,1,19,246,2,0,19,19,247,1,247,1,19,247,2,0,19,19,248,1,248,1,19,248,2,0,19,19,249,1,249,1,19,249,2,0,19,19,250,1,250,1,19,250,2,0,19,19,251,1,251,1,19,251,2,0,19,19,252,1,252,1,19,252,2,0,19,19,253,1,253,1,19,253,2,0,19,19,254,1,254,1,19,254,2,0,19,19,255,1,255,1,19,255,2,0,19,19,256,1,256,1,19,256,2,0,19,19,257,1,257,1,19,257,2,0,19,19,258,1,258,1,19,258,2,0,19,19,259,1,259,1,19,259,2,0,19,19,260,1,260,1,19,260,2,0,19,19,261,1,261,1,19,261,2,0,19,19,262,1,262,1,19,262,2,0,19,19,263,1,263,1,19,263,2,0,19,19,264,1,264,1,19,264,2,0,19,19,265,1,265,1,19,265,2,0,19,19,266,1,266,1,19,266,2,0,19,19,267,1,267,1,19,267,2,0,19,19,268,1,268,1,19,268,2,0,19,19,269,1,269,1,19,269,2,0,19,19,270,1,270,1,19,270,2,0,19,19,271,1,271,1,19,271,2,0,19,19,272,1,272,1,19,272,2,0,19,19,273,1,273,1,19,273,2,0,19,19,274,1,274,1,19,274,2,0,19,19,275,1,275,1,19,275,2,0,19,19,276,1,276,1,19,276,2,0,19,19,277,1,277,1,19,277,2,0,19,19,278,1,278,1,19,278,2,0,19,19,279,1,279,1,19,279,2,0,19,19,280,1,280,1,19,280,2,0,19,19,281,1,281,1,19,281,2,0,19,19,282,1,282,1,19,282,2,0,19,19,283,1,283,1,19,283,2,0,19,19,284,1,284,1,19,284,2,0,19,19,285,1,285,1,19,285,2,0,19,19,286,1,286,1,19,286,2,0,19,19,287,1,287,1,19,287,2,0,19,19,896,1,896,1,19,896,2,0,19,19,897,1,897,1,19,897,2,0,19,19,898,1,898,1,19,898,2,0,19,19,899,1,899,1,19,899,2,0,19,19,900,1,900,1,19,900,2,0,19,19,901,1,901,1,19,901,2,0,19,19,902,1,902,1,19,902,2,0,19,19,903,1,903,1,19,903,2,0,19,19,904,1,904,1,19,904,2,0,19,19,905,1,905,1,19,905,2,0,19,19,906,1,906,1,19,906,2,0,19,19,907,1,907,1,19,907,2,0,19,19,908,1,908,1,19,908,2,0,19,19,909,1,909,1,19,909,2,0,19,19,910,1,910,1,19,910,2,0,19,19,911,1,911,1,19,911,2,0,19,19,912,1,912,1,19,912,2,0,19,19,913,1,913,1,19,913,2,0,19,19,914,1,914,1,19,914,2,0,19,19,915,1,915,1,19,915,2,0,19,19,916,1,916,1,19,916,2,0,19,19,917,1,917,1,19,917,2,0,19,19,918,1,918,1,19,918,2,0,19,19,919,1,919,1,19,919,2,0,19,19,920,1,920,1,19,920,2,0,19,19,921,1,921,1,19,921,2,0,19,19,922,1,922,1,19,922,2,0,19,19,923,1,923,1,19,923,2,0,19,19,924,1,924,1,19,924,2,0,19,19,925,1,925,1,19,925,2,0,19,19,926,1,926,1,19,926,2,0,19,19,927,1,927,1,19,927,2,0,19,19,704,1,704,1,19,704,2,0,19,19,705,1,705,1,19,705,2,0,19,19,706,1,706,1,19,706,2,0,19,19,707,1,707,1,19,707,2,0,19,19,708,1,708,1,19,708,2,0,19,19,709,1,709,1,19,709,2,0,19,19,710,1,710,1,19,710,2,0,19,19,711,1,711,1,19,711,2,0,19,19,712,1,712,1,19,712,2,0,19,19,713,1,713,1,19,713,2,0,19,19,714,1,714,1,19,714,2,0,19,19,715,1,715,1,19,715,2,0,19,19,716,1,716,1,19,716,2,0,19,19,717,1,717,1,19,717,2,0,19,19,718,1,718,1,19,718,2,0,19,19,719,1,719,1,19,719,2,0,19,19,720,1,720,1,19,720,2,0,19,19,721,1,721,1,19,721,2,0,19,19,722,1,722,1,19,722,2,0,19,19,723,1,723,1,19,723,2,0,19,19,724,1,724,1,19,724,2,0,19,19,725,1,725,1,19,725,2,0,19,19,726,1,726,1,19,726,2,0,19,19,727,1,727,1,19,727,2,0,19,19,728,1,728,1,19,728,2,0,19,19,729,1,729,1,19,729,2,0,19,19,730,1,730,1,19,730,2,0,19,19,731,1,731,1,19,731,2,0,19,19,732,1,732,1,19,732,2,0,19,19,733,1,733,1,19,733,2,0,19,19,734,1,734,1,19,734,2,0,19,19,735,1,735,1,19,735,2,0,19,19],"order":[448,449,450,451,452,453,454,455,456,457,458,459,460,461,462,463,464,465,466,467,468,469,470,471,472,473,474,475,476,477,478,479,384,385,386,387,388,389,390,391,392,393,394,395,396,397,398,399,400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,544,545,546,547,548,549,550,551,552,553,554,555,556,557,558,559,560,561,562,563,564,565,566,567,568,569,570,571,572,573,574,575,416,417,418,419,420,421,422,423,424,425,426,427,428,429,430,431,432,433,434,435,436,437,438,439,440,441,442,443,444,445,446,447,672,673,674,675,676,677,678,679,680,681,682,683,684,685,686,687,688,689,690,691,692,693,694,695,696,697,698,699,700,701,702,703,608,609,610,611,612,613,614,615,616,617,618,619,620,621,622,623,624,625,626,627,628,629,630,631,632,633,634,635,636,637,638,639,640,641,642,643,644,645,646,647,648,649,650,651,652,653,654,655,656,657,658,659,660,661,662,663,664,665,666,667,668,669,670,671,864,865,866,867,868,869,870,871,872,873,874,875,876,877,878,879,880,881,882,883,884,885,886,887,888,889,890,891,892,893,894,895,992,993,994,995,996,997,998,999,1000,1001,1002,1003,1004,1005,1006,1007,1008,1009,1010,1011,1012,1013,1014,1015,1016,1017,1018,1019,1020,1021,1022,1023,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,576,577,578,579,580,581,582,583,584,585,586,587,588,589,590,591,592,593,594,595,596,597,598,599,600,601,602,603,604,605,606,607,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,320,321,322,323,324,325,326,327,328,329,330,331,332,333,334,335,336,337,338,339,340,341,342,343,344,345,346,347,348,349,350,351,736,737,738,739,740,741,742,743,744,745,746,747,748,749,750,751,752,753,754,755,756,757,758,759,760,761,762,763,764,765,766,767,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,928,929,930,931,932,933,934,935,936,937,938,939,940,941,942,943,944,945,946,947,948,949,950,951,952,953,954,955,956,957,958,959,512,513,514,515,516,517,518,519,520,521,522,523,524,525,526,527,528,529,530,531,532,533,534,535,536,537,538,539,540,541,542,543,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,832,833,834,835,836,837,838,839,840,841,842,843,844,845,846,847,848,849,850,851,852,853,854,855,856,857,858,859,860,861,862,863,352,353,354,355,356,357,358,359,360,361,362,363,364,365,366,367,368,369,370,371,372,373,374,375,376,377,378,379,380,381,382,383,288,289,290,291,292,293,294,295,296,297,298,299,300,301,302,303,304,305,306,307,308,309,310,311,312,313,314,315,316,317,318,319,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,960,961,962,963,964,965,966,967,968,969,970,971,972,973,974,975,976,977,978,979,980,981,982,983,984,985,986,987,988,989,990,991,800,801,802,803,804,805,806,807,808,809,810,811,812,813,814,815,816,817,818,819,820,821,822,823,824,825,826,827,828,829,830,831,480,481,482,483,484,485,486,487,488,489,490,491,492,493,494,495,496,497,498,499,500,501,502,503,504,505,506,507,508,509,510,511,768,769,770,771,772,773,774,775,776,777,778,779,780,781,782,783,784,785,786,787,788,789,790,791,792,793,794,795,796,797,798,799,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255,256,257,258,259,260,261,262,263,264,265,266,267,268,269,270,271,272,273,274,275,276,277,278,279,280,281,282,283,284,285,286,287,896,897,898,899,900,901,902,903,904,905,906,907,908,909,910,911,912,913,914,915,916,917,918,919,920,921,922,923,924,925,926,927,704,705,706,707,708,709,710,711,712,713,714,715,716,717,718,719,720,721,722,723,724,725,726,727,728,729,730,731,732,733,734,735],"snaps":[{"alloc":1,"data":"AQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAA==","init":"//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8="},{"alloc":2,"data":"AAQAAA==","init":"Dw=="}]},
+{"type":"memcpy","line":37,"file":"examples/05_race_condition.cu","kind":"DeviceToHost","ok":true,"bytes":4,"pinned":false,"dst":"sum","src":"d_sum","dstAlloc":-1,"srcAlloc":2,"tHost":80.1267,"t0":80.1407,"t1":80.1507,"snap":{"alloc":2,"data":"AAQAAA==","init":"Dw=="}},
+{"type":"free","line":40,"file":"examples/05_race_condition.cu","name":"d_a","ok":true,"alloc":1,"t0":80.1647,"t1":80.1697},
+{"type":"free","line":41,"file":"examples/05_race_condition.cu","name":"d_sum","ok":true,"alloc":2,"t0":80.1697,"t1":80.1747}],"allocs":[{"id":1,"name":"d_a","bytes":4096,"elemSize":4,"type":7,"typeName":"int","line":28,"freeLine":40},{"id":2,"name":"d_sum","bytes":4,"elemSize":4,"type":7,"typeName":"int","line":29,"freeLine":41}],"diagnostics":[{"severity":"error","code":"data-race","title":"data race: several GPU threads write the same element of `sum`","file":"examples/05_race_condition.cu","line":19,"alloc":2,"event":5,"launch":1,"rows":[["kernel","`total`, launched at line 34"],["memory","`sum` is the device array `d_sum`: 1 × int (4 bytes), cudaMalloc at line 29"],["index","0 (1,023 conflicting accesses from 1,023 GPU threads)"],["threads","GPU thread #449: blockIdx.x = 1, threadIdx.x = 193 … and GPU thread #448: blockIdx.x = 1, threadIdx.x = 192"]],"hint":"On a GPU these threads run at the same time, so their updates overwrite each other and the result is unpredictable (wcu ran them one by one, so your output may look right). Give each thread its own output element (out[i]), or use atomicAdd(&sum[0], value), which updates memory in one indivisible step. See examples/11_atomic_sum.cu."}],"sources":{"examples/05_race_condition.cu":"// 05 — BUG: a data race.\n//\n// Every GPU thread does `sum[0] += a[i]` at the same time. On a real GPU most\n// of those updates are lost and the total is wrong (and different every run).\n// wcu runs threads one at a time, so the answer happens to look right here,\n// which is exactly why it reports the race.\n//\n// The fix is in examples/11_atomic_sum.cu.\n#include \u003cstdio.h>\n#include \u003cstdlib.h>\n#include \u003ccuda.h>\n\n#define N 1024\n\n__global__ void total(const int *a, int *sum, int n)\n{\n    int i = blockIdx.x * blockDim.x + threadIdx.x;\n    if (i \u003c n)\n        sum[0] += a[i];          // \u003c-- every thread writes the same element\n}\n\nint main(void)\n{\n    int a[N];\n    for (int i = 0; i \u003c N; i++) a[i] = 1;\n\n    int *d_a, *d_sum;\n    cudaMalloc((void **)&d_a, sizeof a);\n    cudaMalloc((void **)&d_sum, sizeof(int));\n    cudaMemcpy(d_a, a, sizeof a, cudaMemcpyHostToDevice);\n    int zero = 0;\n    cudaMemcpy(d_sum, &zero, sizeof(int), cudaMemcpyHostToDevice);\n\n    total\u003c\u003c\u003c4, 256>>>(d_a, d_sum, N);\n\n    int sum;\n    cudaMemcpy(&sum, d_sum, sizeof(int), cudaMemcpyDeviceToHost);\n    printf(\"sum = %d (expected %d)\\n\", sum, N);\n\n    cudaFree(d_a);\n    cudaFree(d_sum);\n    return 0;\n}\n"}};
+
+/* ---------- helpers ---------- */
+const el = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+};
+const fmtInt = n => n.toLocaleString('en-US');
+const fmtMs = ms => ms >= 100 ? ms.toFixed(1) + ' ms' : ms >= 1 ? ms.toFixed(2) + ' ms'
+  : ms >= 0.001 ? (ms * 1000).toFixed(1) + ' µs' : (ms * 1e6).toFixed(0) + ' ns';
+const fmtBytes = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB'
+  : b < 1073741824 ? (b / 1048576).toFixed(1) + ' MB' : (b / 1073741824).toFixed(2) + ' GB';
+
+function fmtVal(v, type) {
+  if (v === undefined || v === null) return '';
+  if (type === 1 || type === 2) {
+    if (!isFinite(v)) return String(v);
+    if (v === 0) return '0';
+    const a = Math.abs(v);
+    if (a >= 1e6 || a < 1e-3) return v.toExponential(1);
+    return String(Math.round(v * 1000) / 1000);
+  }
+  return String(v);
+}
+
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/* Decode a device memory snapshot into values plus an "was it ever written" flag. */
+function decodeSnap(snap, alloc) {
+  if (!snap) return null;
+  const bytes = b64ToBytes(snap.data);
+  const initBits = b64ToBytes(snap.init || '');
+  const dv = new DataView(bytes.buffer);
+  const es = alloc.elemSize || 1, type = alloc.type;
+  const n = Math.floor(bytes.length / es);
+  const vals = new Array(n), init = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * es;
+    let v;
+    try {
+      switch (type) {
+        case 1: v = dv.getFloat32(o, true); break;
+        case 2: v = dv.getFloat64(o, true); break;
+        case 3: v = dv.getInt8(o); break;
+        case 4: v = dv.getUint8(o); break;
+        case 5: v = dv.getInt16(o, true); break;
+        case 6: v = dv.getUint16(o, true); break;
+        case 7: v = dv.getInt32(o, true); break;
+        case 8: v = dv.getUint32(o, true); break;
+        case 9: case 11: v = Number(dv.getBigInt64(o, true)); break;
+        case 10: case 12: v = Number(dv.getBigUint64(o, true)); break;
+        case 13: v = dv.getUint8(o) ? 'true' : 'false'; break;
+        default: v = '0x' + bytes[o].toString(16).padStart(2, '0');
+      }
+    } catch (e) { v = null; }
+    vals[i] = v;
+    init[i] = (initBits[Math.floor(o / 8)] >> (o % 8)) & 1;
+  }
+  return { vals, init, count: n };
+}
+
+/* ---------- model ---------- */
+let T, allocs, state;
+
+function threadPos(ev, t) {
+  const [gx, gy] = ev.grid, [bx, by, bz] = ev.block;
+  const per = bx * by * bz;
+  const b = Math.floor(t / per), th = t % per;
+  return {
+    block: [b % gx, Math.floor(b / gx) % gy, Math.floor(b / (gx * gy))],
+    thread: [th % bx, Math.floor(th / bx) % by, Math.floor(th / (bx * by))],
+    blockIndex: b, threadInBlock: th,
+  };
+}
+
+/* A warp is WARP_SIZE consecutive threads of one block, running together. */
+function warpSize(ev) { return ev.warpSize || 32; }
+
+function warpOf(ev, t) {
+  const [bx, by, bz] = ev.block;
+  const per = bx * by * bz, w = warpSize(ev);
+  const perBlock = Math.ceil(per / w);
+  return Math.floor(t / per) * perBlock + Math.floor((t % per) / w);
+}
+
+function laneOf(ev, t) {
+  const [bx, by, bz] = ev.block;
+  return (t % (bx * by * bz)) % warpSize(ev);
+}
+
+/* Per-launch analysis: what each thread touched, and what happened to each memory cell. */
+function analyze(ev) {
+  if (ev._a) return ev._a;
+  const perThread = new Map(), perCell = new Map();
+  const acc = ev.acc || [];
+  const byWarp = new Map();
+  for (let i = 0; i < acc.length; i += 5) {
+    const t = acc[i], a = acc[i + 1], idx = acc[i + 2], f = acc[i + 3], line = acc[i + 4];
+    let list = perThread.get(t);
+    if (!list) perThread.set(t, list = []);
+    list.push({ a, idx, f, line });
+    const w = warpOf(ev, t);
+    const wkey = w + ':' + line + ':' + a;
+    let lanes = byWarp.get(wkey);
+    if (!lanes) byWarp.set(wkey, lanes = { warp: w, line, alloc: a, lanes: [] });
+    lanes.lanes.push({ lane: laneOf(ev, t), thread: t, idx });
+    const key = a + ':' + idx;
+    let c = perCell.get(key);
+    if (!c) perCell.set(key, c = { a, idx, threads: [], read: 0, write: 0, flags: 0 });
+    c.flags |= f;
+    if (f & 1) c.read++;
+    if (f & 2) c.write++;
+    if (!c.threads.includes(t)) c.threads.push(t);
+  }
+  const snaps = new Map();
+  for (const s of ev.snaps || []) {
+    const al = allocs.get(s.alloc);
+    if (al) snaps.set(s.alloc, decodeSnap(s, al));
+  }
+  const touched = [...new Set((ev.acc || []).filter((_, i) => i % 5 === 1))].filter(a => a > 0);
+  return (ev._a = { perThread, perCell, snaps, touched, byWarp });
+}
+
+function threadClass(list) {
+  if (!list) return '';
+  let cls = '';
+  for (const a of list) {
+    if (a.f & (8 | 64)) return 'err';
+    if (a.f & 16) cls = 'race';
+    else if (a.f & 2 && cls !== 'race') cls = 'w';
+    else if (!cls) cls = 'r';
+  }
+  return cls;
+}
+
+/* ---------- rendering ---------- */
+const SCROLLERS = ['aside', '#detail .primary', '#detail .tabbody'];
+
+function render() {
+  const app = document.getElementById('app');
+  const keep = SCROLLERS.map(sel => {
+    const n = document.querySelector(sel);
+    return n ? n.scrollTop : null;
+  });
+  app.textContent = '';
+  app.append(renderMain());
+  SCROLLERS.forEach((sel, i) => {
+    const n = document.querySelector(sel);
+    if (n && keep[i]) n.scrollTop = keep[i];
+  });
+  applyHighlights();
+}
+
+function renderMain() {
+  const main = el('main');
+  const side = el('aside');
+  side.append(...[renderBrand(), renderStatus(), renderTimeline(), renderSteps(), renderProblems()].filter(Boolean));
+  const detail = el('section');
+  detail.id = 'detail';
+  detail.append(renderDetail());
+  main.append(side, detail);
+  return main;
+}
+
+function renderBrand() {
+  const p = el('div', 'brandpane');
+  p.append(el('div', 'brandname', 'Wits CUDA Emulator'));
+  const prog = el('div', 'prog');
+  prog.append(el('span', null, 'program  '), document.createTextNode(T.program));
+  p.append(prog);
+  return p;
+}
+
+/* How the run went, and how the emulator ran the threads. */
+function renderStatus() {
+  const p = el('section', 'pane');
+  const bad = T.totals.errors, warn = T.totals.warnings;
+  const badges = el('div', 'badges');
+  if (T.status === 'crashed') badges.append(el('div', 'badge err', 'crashed'));
+  if (bad) badges.append(el('div', 'badge err', bad + (bad === 1 ? ' error' : ' errors')));
+  if (warn) badges.append(el('div', 'badge warn', warn + (warn === 1 ? ' warning' : ' warnings')));
+  if (!badges.children.length) return null;   /* a clean run needs no banner */
+  p.append(badges);
+  return p;
+}
+
+function renderTimeline() {
+  const p = el('section', 'pane');
+  p.append(el('h2', null, 'Timeline (simulated)'));
+  const skipInit = !state.showInit;
+  const t0 = skipInit ? T.model.contextInitMs : 0;
+  const t1 = Math.max(T.totals.endMs, t0 + 0.001);
+  const lanes = { host: [], copy: [], gpu: [] };
+  T.events.forEach((e, i) => {
+    const s = e.t0 ?? 0, f = e.t1 ?? s;
+    if (e.type === 'memcpy' || e.type === 'memset') lanes.copy.push({ e, i, s, f, cls: e.ok === false ? 'bad' : 'copy' });
+    else if (e.type === 'launch') lanes.gpu.push({ e, i, s, f, cls: e.ok === false ? 'bad' : 'kernel' });
+    else if (e.type === 'sync') lanes.host.push({ e, i, s, f, cls: 'wait' });
+    else lanes.host.push({ e, i, s, f, cls: '' });
+  });
+  const box = el('div', 'lanes');
+  for (const [name, items] of [['Host', lanes.host], ['Copy', lanes.copy], ['GPU', lanes.gpu]]) {
+    const lane = el('div', 'lane');
+    lane.append(el('div', 'name', name));
+    const track = el('div', 'track');
+    for (const it of items) {
+      if (it.f < t0) continue;
+      const bar = el('div', 'bar ' + it.cls + (state.sel === it.i ? ' sel' : ''));
+      const left = (Math.max(it.s, t0) - t0) / (t1 - t0) * 100;
+      const w = Math.max((it.f - Math.max(it.s, t0)) / (t1 - t0) * 100, 0.6);
+      bar.style.left = left + '%';
+      bar.style.width = w + '%';
+      bar.title = describe(it.e) + ' — ' + fmtMs(it.f - it.s);
+      bar.onclick = () => select(it.i);
+      track.append(bar);
+    }
+    lane.append(track);
+    box.append(lane);
+  }
+  const axis = el('div', 'axis');
+  axis.append(el('span', null, fmtMs(t0)), el('span', null, fmtMs(t1)));
+  box.append(axis);
+  p.append(box);
+  const lab = el('label', 'toggle');
+  const cb = el('input');
+  cb.type = 'checkbox';
+  cb.checked = state.showInit;
+  cb.onchange = () => { state.showInit = cb.checked; render(); };
+  lab.append(cb, el('span', null, 'include CUDA start-up (' + fmtMs(T.model.contextInitMs) + ')'));
+  p.append(lab);
+  return p;
+}
+
+function describe(e) {
+  switch (e.type) {
+    case 'context': return 'CUDA start-up';
+    case 'malloc': return 'cudaMalloc ' + e.name + ' (' + fmtBytes(e.bytes) + ')';
+    case 'free': return 'cudaFree ' + e.name;
+    case 'memcpy': return 'cudaMemcpy ' + e.src + ' → ' + e.dst + ' (' + fmtBytes(e.bytes) + ')';
+    case 'memset': return 'cudaMemset ' + e.name;
+    case 'sync': return 'cudaDeviceSynchronize';
+    case 'launch': return e.kernel + '<<<' + e.grid.filter((v, i) => i === 0 || v > 1).join(', ') + ', '
+      + e.block.filter((v, i) => i === 0 || v > 1).join(', ') + '>>>';
+    case 'crash': return 'crash';
+  }
+  return e.type;
+}
+
+const ICONS = { context: '◴', malloc: '▢', free: '▨', memcpy: '⇄', memset: '▤', sync: '⏸', launch: '▶', crash: '✕' };
+
+function renderSteps() {
+  const p = el('section', 'pane');
+  p.append(el('h2', null, 'What the program did'));
+  T.events.forEach((e, i) => {
+    const row = el('div', 'step' + (state.sel === i ? ' sel' : '') + (e.ok === false || e.type === 'crash' ? ' bad' : ''));
+    row.append(el('div', 'icon', ICONS[e.type] || '·'), el('div', 'what', describe(e)),
+      el('div', 't', e.line ? 'L' + e.line : ''));
+    row.onclick = () => select(i);
+    p.append(row);
+  });
+  return p;
+}
+
+function renderProblems() {
+  const p = el('section', 'pane');
+  p.append(el('h2', null, 'Problems (' + T.diagnostics.length + ')'));
+  if (!T.diagnostics.length) p.append(el('div', 'sub', 'None. The run looks clean.'));
+  T.diagnostics.forEach(d => {
+    const box = el('div', 'prob ' + d.severity);
+    box.append(el('div', 'code', d.code + (d.line ? ' · line ' + d.line : '')), el('div', 'title', d.title));
+    box.onclick = () => select(d.event, d);
+    p.append(box);
+  });
+  return p;
+}
+
+function select(i, diag) {
+  state.sel = Math.min(Math.max(i, 0), T.events.length - 1);
+  state.thread = null;
+  state.pinned = null;
+  state.tab = diag ? 'Problems' : null;   /* arriving from the problem list opens it */
+  state.focusDiag = diag || null;
+  state.play = null;
+  render();
+  for (const sel of ['#detail .primary', '#detail .tabbody']) {
+    const n = document.querySelector(sel);
+    if (n) n.scrollTop = 0;
+  }
+}
+
+/* ---------- detail panels ---------- */
+let currentTabs = [];
+
+function renderDetail() {
+  const box = el('div');
+  const e = T.events[state.sel];
+  if (!e) return box;
+  const diags = T.diagnostics.filter(d => d.event === state.sel);
+  const primary = el('div', 'primary');
+  const tabs = [];
+
+  if (e.type === 'launch') {
+    const p = launchPanels(e);
+    primary.append(p[1] || p[0]);        /* the thread grid, on its own */
+    if (p[2]) tabs.push({ name: 'Thread', node: p[2] });
+    if (p[3]) tabs.push({ name: 'Warp memory', node: p[3] });
+    if (p[4]) tabs.push({ name: 'Device memory', node: p[4] });
+    if (p[1]) tabs.push({ name: 'Launch', node: p[0] });   /* the summary is reference, not the view */
+  } else {
+    const panel = e.type === 'memcpy' ? copyPanel(e)
+      : e.type === 'malloc' || e.type === 'free' || e.type === 'memset' ? memPanel(e)
+      : e.type === 'context' ? contextPanel()
+      : e.type === 'sync' ? syncPanel(e)
+      : e.type === 'crash' ? crashPanel(e) : el('div');
+    primary.append(panel);
+  }
+
+  const probs = el('div');
+  if (diags.length) for (const d of diags) probs.append(diagCard(d));
+  else probs.append(el('div', 'sub', 'Nothing was reported on this step.'));
+  tabs.push({ name: diags.length ? 'Problems (' + diags.length + ')' : 'Problems', node: probs });
+  if (e.file) tabs.push({ name: 'Source', node: sourceCard(e, diags) });
+
+  currentTabs = tabs;
+  box.append(primary, renderBottom(tabs));
+  return box;
+}
+
+function setTab(name) {
+  state.tab = name;
+  const old = document.querySelector('#detail .bottom');
+  if (!old) { render(); return; }
+  old.replaceWith(renderBottom(currentTabs));   /* the primary view keeps its scroll */
+  applyHighlights();
+}
+
+/* A VS Code-style panel: tab strip, one view at a time, draggable top edge. */
+function renderBottom(tabs) {
+  const bottom = el('div', 'bottom');
+  bottom.style.height = (state.bottomH || 320) + 'px';
+  const grab = el('div', 'grabber');
+  grab.title = 'drag to resize';
+  grab.onmousedown = ev => {
+    const startY = ev.clientY, startH = state.bottomH || 320;
+    const move = m => {
+      state.bottomH = Math.max(90, Math.min(startH + (startY - m.clientY), window.innerHeight - 180));
+      bottom.style.height = state.bottomH + 'px';
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+    ev.preventDefault();
+  };
+  const bar = el('div', 'tabbar');
+  let active = tabs.findIndex(t => t.name.split(' (')[0] === state.tab);
+  if (active < 0) active = 0;
+  tabs.forEach((t, i) => {
+    const tab = el('div', 'tab' + (i === active ? ' active' : ''), t.name);
+    tab.onclick = () => setTab(t.name.split(' (')[0]);
+    bar.append(tab);
+  });
+  const body = el('div', 'tabbody');
+  if (tabs[active]) body.append(tabs[active].node);
+  bottom.append(grab, bar, body);
+  return bottom;
+}
+
+function diagCard(d) {
+  const c = el('div', 'card');
+  c.style.borderLeft = '3px solid var(--' + (d.severity === 'error' ? 'err' : 'warn') + ')';
+  c.append(el('h3', null, d.title), el('div', 'sub', d.code + (d.line ? ' · line ' + d.line : '')));
+  const kv = el('div', 'kv');
+  kv.style.flexDirection = 'column';
+  for (const [k, v] of d.rows || []) {
+    const row = el('div');
+    row.append(el('span', null, k + '  '), document.createTextNode(v));
+    kv.append(row);
+  }
+  c.append(kv);
+  if (d.hint) c.append(el('div', 'note', '💡 ' + d.hint));
+  return c;
+}
+
+function contextPanel() {
+  const c = el('div', 'card');
+  c.append(el('h3', null, 'CUDA start-up'), el('div', 'sub',
+    'The first CUDA call in a program creates the GPU context: ' + fmtMs(T.model.contextInitMs)
+    + ' in this model, and a real GPU is no faster.'));
+  c.append(el('div', 'note', 'This is why timing measurements should skip the first call, and why short-lived '
+    + 'GPU programs can spend more time starting up than computing.'));
+  return c;
+}
+
+function syncPanel(e) {
+  const c = el('div', 'card');
+  const waited = (e.t1 ?? 0) - (e.t0 ?? 0);
+  c.append(el('h3', null, 'cudaDeviceSynchronize()'), el('div', 'sub',
+    waited > 0 ? 'The CPU waited ' + fmtMs(waited) + ' here for the GPU to finish.'
+      : 'The GPU was already idle, so this returned immediately.'));
+  c.append(el('div', 'note', 'Kernel launches are asynchronous: the CPU keeps running while the GPU works. '
+    + 'cudaDeviceSynchronize (and any cudaMemcpy) waits for the GPU to catch up.'));
+  return c;
+}
+
+function crashPanel(e) {
+  const c = el('div', 'card');
+  c.append(el('h3', null, e.title || 'crash'), el('div', 'sub', 'The program stopped here.'));
+  return c;
+}
+
+function memPanel(e) {
+  const c = el('div', 'card');
+  const a = allocs.get(e.alloc);
+  const verb = { malloc: 'cudaMalloc', free: 'cudaFree', memset: 'cudaMemset' }[e.type];
+  c.append(el('h3', null, verb + '(' + (e.name || '') + ')'),
+    el('div', 'sub', e.ok === false ? 'This call failed.' : e.type === 'malloc'
+      ? 'Reserved ' + fmtBytes(e.bytes) + ' of device memory. The contents are undefined until something writes to it.'
+      : e.type === 'free' ? 'Released the device memory.'
+      : 'Filled ' + fmtBytes(e.bytes) + ' with the byte ' + e.value + '.'));
+  if (a) {
+    const kv = el('div', 'kv');
+    kv.append(kvItem('elements', a.elemSize ? fmtInt(a.bytes / a.elemSize) + ' × ' + a.typeName : '—'),
+      kvItem('bytes', fmtBytes(a.bytes)), kvItem('allocated', 'line ' + a.line),
+      kvItem('freed', a.freeLine ? 'line ' + a.freeLine : 'never'));
+    c.append(kv);
+  }
+  if (e.snap && a) c.append(memoryStrip(a, decodeSnap(e.snap, a), null, null));
+  return c;
+}
+
+function kvItem(k, v) {
+  const d = el('div');
+  d.append(el('span', null, k + ' '), document.createTextNode(v));
+  return d;
+}
+
+function copyPanel(e) {
+  const c = el('div', 'card');
+  const h2d = e.kind === 'HostToDevice';
+  const dur = (e.t1 ?? 0) - (e.t0 ?? 0);
+  const waited = (e.t0 ?? 0) - (e.tHost ?? 0);
+  c.append(el('h3', null, 'cudaMemcpy — ' + e.kind),
+    el('div', 'sub', fmtBytes(e.bytes) + ' in ' + fmtMs(dur) + ' over the (simulated) PCIe link'
+      + (e.pinned ? ', from pinned host memory' : '')));
+  const viz = el('div', 'copyviz');
+  const left = el('div', 'side'), right = el('div', 'side');
+  left.append(el('div', 'lbl', h2d ? 'Host (CPU) memory' : 'Device (GPU) memory'),
+    el('div', 'mono', h2d ? e.src : e.src));
+  right.append(el('div', 'lbl', h2d ? 'Device (GPU) memory' : 'Host (CPU) memory'),
+    el('div', 'mono', e.dst));
+  viz.append(left, el('div', 'arrow', '→'), right);
+  c.append(viz);
+  if (waited > 0.0005) c.append(el('div', 'note', 'The CPU waited ' + fmtMs(waited)
+    + ' here for the GPU to finish its work: a copy cannot start while the kernel is still running.'));
+  const a = allocs.get(e.dstAlloc > 0 ? e.dstAlloc : e.srcAlloc);
+  if (e.snap && a) c.append(memoryStrip(a, decodeSnap(e.snap, a), null, null, 'device memory after the copy'));
+  const share = (dur / Math.max(T.totals.kernelMs, 1e-9));
+  if (T.totals.kernelMs > 0) c.append(el('div', 'note', 'This single copy costs ' + share.toFixed(1)
+    + '× the time of all kernel work in this program. Moving data is usually the expensive part, which is why '
+    + 'GPU code tries to copy once and compute many times.'));
+  return c;
+}
+
+/* ---------- launch panels ---------- */
+function launchPanels(e) {
+  const out = [];
+  const a = analyze(e);
+  const [gx, gy, gz] = e.grid, [bx, by, bz] = e.block;
+  const head = el('div', 'card');
+  head.append(el('h3', null, describe(e)), el('div', 'sub',
+    e.ok === false ? 'The launch failed: ' + e.reason
+      : fmtInt(e.threads) + ' GPU threads ran `' + e.kernel + '`, in ' + fmtInt(gx * gy * gz)
+        + ' block' + (gx * gy * gz === 1 ? '' : 's') + ' of ' + fmtInt(bx * by * bz) + ' threads.'));
+  const kv = el('div', 'kv');
+  kv.append(kvItem('numBlocks', e.grid.join(' × ')), kvItem('threadsPerBlock', e.block.join(' × ')),
+    kvItem('GPU time', fmtMs((e.t1 ?? 0) - (e.t0 ?? 0))),
+    kvItem('same work on 1 CPU core', fmtMs(e.cpuMs || 0)));
+  head.append(kv);
+  if (e.ok !== false) {
+    const ws = warpSize(e);
+    head.append(el('div', 'note', 'A GPU runs these ' + fmtInt(e.threads) + ' threads in '
+      + fmtInt(e.warps || Math.ceil(e.threads / ws)) + ' warps of ' + ws
+      + ' — the lanes of a warp issue together and share memory fetches. The emulator ran one warp at a time'
+      + (T.order === 'shuffle' ? ', in a shuffled order' : ', in order')
+      + ', its lanes back to back, so anything that depends on the order of warps shows up as a data race and '
+      + 'printf output comes out jumbled, as it does on real hardware.'));
+  }
+  out.push(head);   /* [0] header */
+  if (e.ok === false) return out;
+
+  /* thread grid */
+  const grid = el('div', 'card');
+  grid.append(el('h3', null, 'GPU threads'), el('div', 'sub',
+    'Each square is one GPU thread and each box is one block; every ' + warpSize(e)
+    + ' threads (one warp) start at a marked square. Hover a thread to see what it did, '
+    + 'and click it to keep it while you scroll.'));
+  const blocks = el('div', 'blocks');
+  const nblocks = gx * gy * gz, per = bx * by * bz;
+  const zoomed = state.zoomBlock != null && nblocks * per > 8192;
+  const showThreads = nblocks * per <= 8192 || zoomed;
+  const list = zoomed ? [state.zoomBlock] : [...Array(Math.min(nblocks, 4096)).keys()];
+  const recLimit = e.recLimit || Infinity;
+  for (const b of list) {
+    const box = el('div', 'block');
+    const bxi = b % gx, byi = Math.floor(b / gx) % gy, bzi = Math.floor(b / (gx * gy));
+    box.append(el('div', 'bl', 'block ' + (gy * gz > 1 ? '(' + bxi + ', ' + byi + (gz > 1 ? ', ' + bzi : '') + ')' : bxi)));
+    if (showThreads) {
+      const ws = warpSize(e);
+      const th = el('div', 'threads' + (per <= 64 ? ' big' : ''));
+      const cols = by > 1 ? bx : Math.min(per, ws);
+      th.style.gridTemplateColumns = 'repeat(' + cols + ', auto)';
+      for (let t = 0; t < per; t++) {
+        const gid = b * per + t;
+        const cell = el('div', 'th ' + (gid >= recLimit ? 'unrec' : threadClass(a.perThread.get(gid)))
+          + (t % ws === 0 ? ' warpstart' : ''));
+        cell.dataset.t = gid;
+        cell.title = 'thread ' + gid + ' · warp ' + warpOf(e, gid) + ', lane ' + (t % ws);
+        th.append(cell);
+      }
+      th.onmouseover = ev => {
+        if (state.pinned == null && ev.target.dataset.t) setThread(+ev.target.dataset.t);
+      };
+      th.onclick = ev => {
+        if (!ev.target.dataset.t) return;
+        const t = +ev.target.dataset.t;
+        state.pinned = state.pinned === t ? null : t;   /* click again to release it */
+        setThread(t);
+      };
+      box.append(th);
+    } else {
+      /* Too many threads to draw: colour the block by the worst thing that happened in it. */
+      let cls = b * per >= recLimit ? 'unrec' : '';
+      for (let t = 0; t < per && cls !== 'err'; t++) {
+        const c = threadClass(a.perThread.get(b * per + t));
+        if (c === 'err') cls = 'err';
+        else if (c === 'race') cls = 'race';
+        else if (c === 'w' && cls !== 'race') cls = 'w';
+        else if (c === 'r' && !cls) cls = 'r';
+      }
+      const summary = el('div', 'th big ' + cls);
+      summary.style.width = '26px';
+      summary.style.height = '26px';
+      summary.title = cls === 'unrec' ? 'not recorded in detail' : 'block ' + b;
+      box.append(summary);
+      box.style.cursor = 'pointer';
+      box.onclick = () => { state.zoomBlock = b; render(); };
+    }
+    blocks.append(box);
+  }
+  grid.append(blocks);
+  if (!showThreads) grid.append(el('div', 'note', 'This launch has ' + fmtInt(nblocks * per)
+    + ' threads — too many to draw individually. Click a block to look inside it.'));
+  if (e.threads > recLimit) grid.append(el('div', 'note', 'wcu recorded what the first '
+    + fmtInt(recLimit) + ' threads did; the striped ones ran too, but their accesses were not kept '
+    + '(the trace would be enormous). Every thread was still checked for errors.'));
+  if (zoomed) {
+    const back = el('button', null, '← all blocks');
+    back.onclick = () => { state.zoomBlock = null; render(); };
+    const row = el('div', 'row');
+    row.append(back);
+    grid.append(row);
+  }
+  const legend = el('div', 'legend');
+  for (const [cls, txt] of [['w', 'wrote memory'], ['r', 'read only'], ['', 'touched no memory (e.g. stopped by if (i < n))'],
+    ['race', 'data race'], ['err', 'illegal access']]) {
+    const s = el('span');
+    const i = el('i');
+    i.className = 'th ' + cls;
+    i.style.background = cls === '' ? 'var(--idle)' : '';
+    s.append(i, document.createTextNode(txt));
+    legend.append(s);
+  }
+  grid.append(legend);
+  grid.append(playRow(e, a));
+  out.push(grid);   /* [1] the thread grid */
+
+  /* [2] thread, [3] warp memory */
+  out.push(threadCard(e, a));
+  out.push(coalescingCard(e, a));
+
+  /* memory */
+  const mem = el('div', 'card');
+  mem.append(el('h3', null, 'Device memory after the kernel'),
+    el('div', 'sub', 'Colour shows what this launch did to each element. Hover a cell to see which thread wrote it.'));
+  if (!a.touched.length) mem.append(el('div', 'sub', 'This kernel touched no device memory.'));
+  for (const id of a.touched) {
+    const al = allocs.get(id);
+    if (al) mem.append(memoryStrip(al, a.snaps.get(id), a, e));
+  }
+  out.push(mem);    /* [4] device memory */
+  return out;
+}
+
+/* What one warp did to memory: a transaction shared by its lanes, or one each.
+ * Follows whichever thread is hovered in the grid above. */
+const TXN_COLOURS = ['#3b5bdb', '#0b7285', '#7048e8', '#e8590c', '#0ca678', '#9c36b5', '#1971c2', '#c2255c'];
+
+function coalescingCard(e, a) {
+  const sites = (e.sites || []).filter(s => s.alloc > 0 && s.warps > 0);
+  const c = el('div', 'card');
+  c.id = 'coalcard';
+  if (!sites.length) return c;
+  const txnBytes = (T.model && T.model.txnBytes) || 128;
+  const ws = warpSize(e);
+
+  /* which warp to show: the hovered thread's, else the first one with records */
+  let focus = state.thread != null ? warpOf(e, state.thread) : null;
+  const has = w => [...a.byWarp.values()].some(g => g.warp === w);
+  if (focus == null || !has(focus)) {
+    const first = [...a.byWarp.values()][0];
+    focus = first ? first.warp : 0;
+  }
+
+  c.append(el('h3', null, 'How warp ' + fmtInt(focus) + ' read memory'), el('div', 'sub',
+    'A warp is ' + ws + ' threads that run together and fetch memory in ' + txnBytes
+    + '-byte transactions. Each row below is this warp\'s ' + ws + ' lanes in order; the number is the '
+    + 'element that lane touched, and the colour is the transaction it needs. '
+    + (state.thread != null ? 'Hover another thread above to follow its warp.'
+                            : 'Hover a thread in the grid above to follow its warp.')));
+
+  for (const site of sites) {
+    const al = allocs.get(site.alloc);
+    const avg = site.txn / site.warps;
+    const group = [...a.byWarp.values()].find(g => g.warp === focus && g.line === site.line && g.alloc === site.alloc);
+    const row = el('div', 'strip');
+    const hdr = el('div', 'hdr');
+    hdr.append(el('span', null, (al ? al.name : 'memory') + '  ·  line ' + site.line),
+      el('span', null, 'launch average: ' + avg.toFixed(1) + ' transaction' + (avg === 1 ? '' : 's') + ' per warp'));
+    row.append(hdr);
+
+    if (!group || !al) {
+      row.append(el('div', 'sub', 'this warp did not touch it here'));
+      c.append(row);
+      continue;
+    }
+    const es = al.elemSize || 1;
+    const segs = new Map();
+    const lanes = group.lanes.slice().sort((x, y) => x.lane - y.lane);
+    for (const l of lanes) {
+      const seg = Math.floor(l.idx * es / txnBytes);
+      if (!segs.has(seg)) segs.set(seg, segs.size);
+    }
+    const strip = el('div', 'cells');
+    for (const l of lanes) {
+      const seg = Math.floor(l.idx * es / txnBytes);
+      const cell = el('div', 'cell wide');
+      cell.textContent = fmtInt(l.idx);
+      cell.dataset.key = site.alloc + ':' + l.idx;
+      cell.title = 'lane ' + l.lane + ' (thread ' + fmtInt(l.thread) + ') touches ' + al.name + '['
+        + fmtInt(l.idx) + '] — transaction #' + seg;
+      cell.style.background = TXN_COLOURS[segs.get(seg) % TXN_COLOURS.length];
+      if (state.thread === l.thread) cell.classList.add('hl');
+      strip.append(cell);
+    }
+    row.append(strip);
+    row.append(el('div', 'sub', lanes.length + ' lane' + (lanes.length === 1 ? '' : 's') + ' → '
+      + segs.size + ' transaction' + (segs.size === 1 ? '' : 's')
+      + (segs.size === 1 ? ' — one fetch serves the whole warp'
+         : segs.size >= lanes.length ? ' — every lane needs its own fetch' : '')));
+    c.append(row);
+  }
+
+  const bad = sites.filter(s => s.txn > s.ideal * 2);
+  if (bad.length) c.append(el('div', 'note', 'Same work, more traffic: if consecutive threads touched '
+    + 'consecutive elements, this kernel would move about '
+    + (bad[0].txn / Math.max(bad[0].ideal, 1)).toFixed(0) + '× less memory.'));
+  return c;
+}
+
+function playRow(e, a) {
+  const row = el('div', 'row');
+  if (!e.order || !e.order.length) return row;
+  const btn = el('button', null, state.play ? '■ stop' : '▶ run the warps one by one');
+  btn.id = 'playbtn';
+  btn.onclick = () => {
+    if (state.play) { stopPlay(); return; }
+    startPlay(e, a);
+  };
+  row.append(btn);
+  const info = el('span', 'sub', state.play ? '' : 'Threads light up 32 at a time: one warp, running together, in the order the emulator picked.');
+  info.id = 'playinfo';
+  row.append(info);
+  return row;
+}
+
+let playTimer = null;
+function stopPlay() {
+  clearInterval(playTimer);
+  playTimer = null;
+  state.play = null;
+  render();
+}
+function startPlay(e, a) {
+  state.play = { pos: 0 };
+  render();
+  const cells = document.querySelectorAll('#detail .th');
+  const memCells = document.querySelectorAll('#detail .cell');
+  cells.forEach(c => c.classList.add('pending'));
+  memCells.forEach(c => c.classList.add('pending'));
+  const byThread = new Map();
+  document.querySelectorAll('#detail .cell[data-t]').forEach(c => {
+    for (const t of c.dataset.t.split(',')) {
+      let l = byThread.get(+t);
+      if (!l) byThread.set(+t, l = []);
+      l.push(c);
+    }
+  });
+  /* Threads ran warp by warp, so reveal them that way: all 32 lanes at once. */
+  const groups = [];
+  for (const t of e.order || []) {
+    const w = warpOf(e, t);
+    if (!groups.length || groups[groups.length - 1].warp !== w) groups.push({ warp: w, threads: [] });
+    groups[groups.length - 1].threads.push(t);
+  }
+  const step = Math.max(1, Math.floor(groups.length / 200));
+  let i = 0;
+  const info = document.getElementById('playinfo');
+  playTimer = setInterval(() => {
+    let last = null;
+    for (let k = 0; k < step && i < groups.length; k++, i++) {
+      last = groups[i];
+      for (const t of last.threads) {
+        const cell = document.querySelector('#detail .th[data-t="' + t + '"]');
+        if (cell) cell.classList.remove('pending');
+        for (const c of byThread.get(t) || []) c.classList.remove('pending');
+      }
+    }
+    if (info && last) info.textContent = 'warp ' + fmtInt(i) + ' of ' + fmtInt(groups.length)
+      + ' — ' + last.threads.length + ' lanes together';
+    if (i >= groups.length) {
+      clearInterval(playTimer);
+      playTimer = null;
+      state.play = null;
+      if (info) info.textContent = 'all ' + fmtInt(groups.length) + ' warps have run';
+      const b = document.getElementById('playbtn');
+      if (b) b.textContent = '▶ run the warps again';
+    }
+  }, 16);
+}
+
+function setThread(t) {
+  state.thread = t;
+  const e = T.events[state.sel];
+  if (!e || e.type !== 'launch') return;
+  const a = analyze(e);
+  /* Only the cards on the open tab exist; update whichever are there. */
+  const card = document.getElementById('threadcard');
+  if (card) card.replaceWith(threadCard(e, a));
+  const coal = document.getElementById('coalcard');
+  if (coal) coal.replaceWith(coalescingCard(e, a));
+  applyHighlights();
+}
+
+/* Outlines live in the DOM, so re-apply them whenever the panel is rebuilt. */
+function applyHighlights() {
+  const t = state.thread;
+  document.querySelectorAll('#detail .hl, #detail .warphl, #detail .pin').forEach(c => {
+    c.classList.remove('hl');
+    c.classList.remove('warphl');
+    c.classList.remove('pin');
+  });
+  if (t == null) return;
+  const e = T.events[state.sel];
+  if (!e || e.type !== 'launch') return;
+  const cell = document.querySelector('#detail .th[data-t="' + t + '"]');
+  if (cell) cell.classList.add(state.pinned === t ? 'pin' : 'hl');
+  /* outline the whole warp, so the grid and the warp view read as the same thing */
+  const warp = warpOf(e, t);
+  document.querySelectorAll('#detail .th[data-t]').forEach(c => {
+    if (warpOf(e, +c.dataset.t) === warp && +c.dataset.t !== t) c.classList.add('warphl');
+  });
+  for (const acc of analyze(e).perThread.get(t) || []) {
+    const c = document.querySelector('#detail .cell[data-key="' + acc.a + ':' + acc.idx + '"]');
+    if (c) c.classList.add('hl');
+  }
+}
+
+function threadCard(e, a) {
+  const c = el('div', 'card');
+  c.id = 'threadcard';
+  const t = state.thread;
+  if (t == null) {
+    c.append(el('h3', null, 'One GPU thread'), el('div', 'sub',
+      'Hover a thread above to see its indexes, the arithmetic that turns them into an array position, '
+      + 'and the memory it touched. Click one to keep it on screen while you scroll.'));
+    return c;
+  }
+  const p = threadPos(e, t);
+  const [bx, by, bz] = e.block;
+  c.append(el('h3', null, 'GPU thread #' + fmtInt(t)), el('div', 'sub', state.pinned === t
+    ? 'Pinned — hovering will not change it. Click the square again to release it.'
+    : 'Following the cursor. Click a thread to pin it.'));
+  const kv = el('div', 'kv');
+  kv.append(kvItem('blockIdx', '(' + p.block.join(', ') + ')'), kvItem('threadIdx', '(' + p.thread.join(', ') + ')'),
+    kvItem('blockDim', '(' + e.block.join(', ') + ')'), kvItem('gridDim', '(' + e.grid.join(', ') + ')'),
+    kvItem('warp', fmtInt(warpOf(e, t)) + ', lane ' + laneOf(e, t) + ' of ' + warpSize(e)));
+  c.append(kv);
+  const mathBox = el('div', 'note mono');
+  let lines = 'blockIdx.x * blockDim.x + threadIdx.x = ' + p.block[0] + ' * ' + bx + ' + ' + p.thread[0]
+    + ' = ' + (p.block[0] * bx + p.thread[0]);
+  if (by > 1 || e.grid[1] > 1)
+    lines += '\nblockIdx.y * blockDim.y + threadIdx.y = ' + p.block[1] + ' * ' + by + ' + ' + p.thread[1]
+      + ' = ' + (p.block[1] * by + p.thread[1]);
+  mathBox.textContent = lines;
+  mathBox.style.whiteSpace = 'pre';
+  c.append(mathBox);
+  const list = a.perThread.get(t);
+  const ul = el('div', 'kv');
+  ul.style.flexDirection = 'column';
+  if (!list || !list.length) {
+    ul.append(el('div', null, 'This thread touched no device memory — it was probably stopped by a bounds check.'));
+  } else {
+    for (const acc of list) {
+      const al = allocs.get(acc.a);
+      const snap = a.snaps.get(acc.a);
+      const val = snap && acc.idx >= 0 && acc.idx < snap.count ? ' = ' + fmtVal(snap.vals[acc.idx], al && al.type) : '';
+      const what = acc.f & 8 ? 'OUT OF BOUNDS' : acc.f & 64 ? 'ILLEGAL'
+        : acc.f & 128 ? 'atomically updated' : (acc.f & 2 ? (acc.f & 1 ? 'read+wrote' : 'wrote') : 'read');
+      const name = al ? al.name : 'unknown memory';
+      const row = el('div', 'mono');
+      row.textContent = what + '  ' + name + '[' + fmtInt(acc.idx) + ']' + (acc.f & 8 ? '' : val)
+        + (acc.f & 16 ? '   ← also touched by another thread (race)' : '')
+        + (acc.f & 32 ? '   ← value was never initialised' : '');
+      if (acc.f & (8 | 64)) row.style.color = 'var(--err)';
+      ul.append(row);
+    }
+  }
+  c.append(ul);
+  return c;
+}
+
+function memoryStrip(alloc, snap, a, ev, label) {
+  const box = el('div', 'strip');
+  const count = alloc.elemSize ? Math.floor(alloc.bytes / alloc.elemSize) : alloc.bytes;
+  const shown = Math.min(count, snap ? snap.count : count, 4096);
+  const hdr = el('div', 'hdr');
+  hdr.append(el('span', null, alloc.name + '[' + fmtInt(count) + '] · ' + (alloc.typeName || 'bytes')),
+    el('span', null, label || (shown < count ? 'showing the first ' + fmtInt(shown) : '')));
+  box.append(hdr);
+  const cells = el('div', 'cells');
+  const wide = shown <= 64;
+  for (let i = 0; i < shown; i++) {
+    const cell = el('div', 'cell' + (wide ? ' wide' : ''));
+    cell.dataset.key = alloc.id + ':' + i;
+    let cls = 'untouched';
+    if (a) {
+      const c = a.perCell.get(alloc.id + ':' + i);
+      if (c) {
+        cls = c.flags & 16 ? 'race' : c.write ? 'written' : 'read';
+        cell.dataset.t = c.threads.join(',');
+        cell.title = (c.write ? 'written' : 'read') + ' by GPU thread'
+          + (c.threads.length > 1 ? 's ' + c.threads.slice(0, 8).map(fmtInt).join(', ')
+            + (c.threads.length > 8 ? ' …' : '') : ' #' + fmtInt(c.threads[0]));
+      }
+    }
+    if (snap && !snap.init[i]) cls = 'uninit';
+    cell.className = 'cell' + (wide ? ' wide' : '') + ' ' + cls;
+    const v = snap && i < snap.count ? snap.vals[i] : null;
+    if (wide) cell.textContent = snap && !snap.init[i] ? '?' : fmtVal(v, alloc.type);
+    else if (snap) cell.title = (cell.title ? cell.title + ' · ' : '') + alloc.name + '[' + i + '] = '
+      + (snap.init[i] ? fmtVal(v, alloc.type) : 'never written');
+    cells.append(cell);
+  }
+  box.append(cells);
+  /* out-of-bounds accesses live past the end of the array */
+  if (a) {
+    const bad = [...a.perCell.values()].filter(c => c.a === alloc.id && (c.idx >= count || c.idx < 0));
+    if (bad.length) {
+      const note = el('div', 'note');
+      note.style.color = 'var(--err)';
+      const idxs = bad.map(c => c.idx).sort((x, y) => x - y);
+      note.textContent = bad.length + ' access' + (bad.length === 1 ? '' : 'es')
+        + ' landed outside this array, at index ' + (idxs[0] === idxs[idxs.length - 1] ? idxs[0]
+          : idxs[0] + ' … ' + idxs[idxs.length - 1]) + ' (valid: 0 … ' + (count - 1) + ').';
+      box.append(note);
+    }
+  }
+  return box;
+}
+
+function sourceCard(e, diags) {
+  const text = T.sources[e.file];
+  if (!text) return el('div');
+  const c = el('div', 'card');
+  const name = e.file.split('/').pop();
+  c.append(el('h3', null, name), el('div', 'sub', e.type === 'launch' && e.kfirst
+    ? 'The kernel and the line that launched it.' : 'Line ' + e.line + '.'));
+  const lines = text.split('\n');
+  const badLines = new Set(diags.map(d => d.line).filter(Boolean));
+  const ranges = [];
+  if (e.type === 'launch' && e.kfirst) ranges.push([e.kfirst, e.klast]);
+  ranges.push([Math.max(1, e.line - 3), Math.min(lines.length, e.line + 3)]);
+  const pre = el('pre', 'src');
+  let last = 0;
+  for (const [from, to] of ranges.sort((p, q) => p[0] - q[0])) {
+    if (from > last + 1 && last) pre.append(el('span', 'ln', '   ⋮\n'));
+    for (let n = Math.max(from, last + 1); n <= to; n++) {
+      const row = el('span', badLines.has(n) ? 'bad' : n === e.line ? 'hi' : '');
+      row.append(el('span', 'ln', String(n).padStart(4) + ' │ '), document.createTextNode(lines[n - 1] + '\n'));
+      pre.append(row);
+      last = n;
+    }
+  }
+  c.append(pre);
+  return c;
+}
+
+/* ---------- boot ---------- */
+function boot(trace) {
+  T = trace;
+  allocs = new Map(T.allocs.map(a => [a.id, a]));
+  const firstLaunch = T.events.findIndex(e => e.type === 'launch');
+  const firstProblem = T.diagnostics.length ? T.diagnostics[0].event : -1;
+  state = {
+    sel: firstProblem >= 0 ? firstProblem : firstLaunch >= 0 ? firstLaunch : 0,
+    thread: null, pinned: null, showInit: false, zoomBlock: null, play: null,
+    tab: firstProblem >= 0 ? 'Problems' : null, bottomH: 320,
+  };
+  render();
+}
+
+if (typeof TRACE === 'object' && TRACE) {
+  boot(TRACE);
+} else {
+  const app = document.getElementById('app');
+  const drop = el('div');
+  drop.id = 'drop';
+  drop.innerHTML = '<div class="brandname">Wits CUDA Emulator</div>'
+    + '<p>Drop a <code>.wcu.json</code> trace here to view it.</p>';
+  app.append(drop);
+  document.body.ondragover = e => e.preventDefault();
+  document.body.ondrop = e => {
+    e.preventDefault();
+    const f = e.dataTransfer.files[0];
+    if (!f) return;
+    f.text().then(t => boot(JSON.parse(t)));
+  };
+}
+</script>
+</body>
+</html>
